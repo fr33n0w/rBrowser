@@ -1,4 +1,5 @@
 # rBrowser v1.0
+<img width="1920" height="996" alt="v1screenshot" src="https://github.com/user-attachments/assets/d7f14680-0dbe-4c9f-b326-802ffd8946ce" />
 
 -----
 
