@@ -459,6 +459,35 @@
             fetchPageByUrl(parsed.hash, parsed.path, url);
         }
 
+        // TODO: This only works with static links, it needs to be expanded further for form support and more.
+        function navigateToLink(url, addHistory = true) {
+            const parsedCurrent = parseNomadNetUrl(currentUrl);
+            if (!parsedCurrent) {
+                alert('Invalid NomadNet URL format. Examples:\n- abcd1234...:/page/index.mu\n- nomadnetwork://abcd1234.../page/index.mu');
+                return;
+            }
+
+            let parsed = parseNomadNetUrl(url);
+            if (!parsed) {
+                parsed = {
+                    hash: parsedCurrent.hash,
+                    path: url.startsWith(':') ? url.substring(1) : url
+                };
+            }
+
+            if (url.startsWith(':')) {
+                url = parsed.hash + url;
+            }
+
+            if (addHistory) {
+                addToHistory(url);
+            }            
+
+            console.log('Navigating to parsed URL:', parsed);
+            console.log('🔥 About to call fetchPageByUrl with:', parsed.hash, parsed.path, url);
+            fetchPageByUrl(parsed.hash, parsed.path, url);
+        }
+
         function fetchPageByUrl(hash, path, originalUrl) {
             if (currentRequest) {
                 console.log('Cancelling previous request');
@@ -508,8 +537,23 @@
                             console.log('Page rendered with', isOriginalParser ? 'original' : 'fallback', 'parser');
                             
                             // Count links found
-                            const linkCount = document.querySelectorAll('#page-content a').length;
+                            const links = document.querySelectorAll('#page-content a')
+                            const linkCount = links.length;
                             console.log('Found', linkCount, 'links in content');
+
+                            function handleClick() {
+                                const action = this.getAttribute('data-action');
+                                const destination = this.getAttribute('data-destination');
+                                const fields = this.getAttribute('data-fields');
+
+                                console.log('Action:', action, 'Destination:', destination, 'Fields:', fields);
+
+                                navigateToLink(destination);
+                            }
+
+                            links.forEach(link => {
+                                link.addEventListener('click', handleClick);
+                            });
                             
                         } else {
                             console.log('Failed to load page:', response.error);
