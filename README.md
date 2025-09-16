@@ -1,8 +1,8 @@
-# rBrowser
-# Reticulum Nomadnet Standalone Browser v1.0
--
+# rBrowser v1.0
 
-# NomadNet Browser
+-----
+
+# rBrowser: Reticulum Standalone NomadNet Browser
 
 A standalone web-based browser for exploring NomadNetwork nodes and pages over the Reticulum mesh network. This browser automatically discovers NomadNet nodes through network announces and provides a user-friendly interface for browsing distributed content with Micron markup support.
 
