@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NomadNet Browser</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Courier New', 'Liberation Mono', 'DejaVu Sans Mono', Courier, monospace !important; }
+        body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: hidden; }
+        .main { display: flex; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; }
+        
+        /* Fixed sidebar dimensions */
+        .sidebar { 
+            width: 320px; 
+            min-width: 320px;
+            max-width: 320px;
+            background: #161b22; 
+            border-right: 1px solid #30363d; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh;
+        }
+        .sidebar-top { 
+            background: #21262d; 
+            padding: 10px 16px; 
+            border-bottom: 1px solid #30363d; 
+            flex-shrink: 0;
+            height: 50px;
+            min-height: 50px;
+            max-height: 50px;
+        }
+        .sidebar-top h2 { margin: 0; font-size: 14px; font-weight: 600; color: #f0f6fc; line-height: 30px; }
+        
+        /* Fixed scrollable node list */
+        .node-list-container { 
+            flex: 1; 
+            overflow-y: auto; 
+            height: calc(100vh - 140px);
+            min-height: calc(100vh - 140px);
+            max-height: calc(100vh - 140px);
+        }
+        .node-list { padding: 6px; }
+        
+        /* Compact node items - MADE CLICKABLE */
+        .node-item { background: #21262d; border: 1px solid #30363d; margin: 0 0 4px 0; padding: 10px; border-radius: 6px; transition: all 0.12s ease; cursor: pointer; }
+        .node-item:hover { background: #30363d; border-color: #58a6ff; }
+        .node-item.selected { background: #0969da; border-color: #1f6feb; }
+        .node-item.selected .node-title { color: #ffffff; }
+        .node-item.selected .node-hash, .node-item.selected .node-info { color: rgba(255,255,255,0.8); }
+        
+        .node-title { color: #58a6ff; font-weight: 600; margin-bottom: 4px; font-size: 12px; line-height: 1.2; }
+        .node-hash { color: #8b949e; font-size: 11px; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace; word-break: break-all; margin-bottom: 4px; line-height: 1.3; }
+        .node-info { color: #7d8590; font-size: 12px; margin-bottom: 6px; }
+        .browse-btn { background: #0969da; color: #ffffff; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 600; transition: all 0.12s ease; width: 100%; }
+        .browse-btn:hover { background: #1f6feb; }
+        
+        /* Fixed status bar */
+        .status-bar { 
+            background: #0d1117; 
+            padding: 8px 16px; 
+            border-top: 1px solid #30363d; 
+            font-size: 13px; 
+            color: #7d8590; 
+            flex-shrink: 0; 
+            font-weight: bold;
+            height: 90px;
+            min-height: 90px;
+            max-height: 90px;
+            overflow: hidden;
+        }
+        .status-bar .online { color: #3fb950; font-weight: bold; }
+        .status-bar .count { color: #58a6ff; font-weight: bold; }
+        
+        /* Fixed content area */
+        .content { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            background: #0d1117;
+            width: calc(100vw - 320px);
+            min-width: calc(100vw - 320px);
+            max-width: calc(100vw - 320px);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Fixed Navigation Bar */
+        .nav-bar { 
+            background: #21262d; 
+            padding: 12px 16px; 
+            border-bottom: 1px solid #30363d; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px;
+            height: 60px;
+            min-height: 60px;
+            max-height: 60px;
+            flex-shrink: 0;
+        }
+        .nav-controls { display: flex; gap: 4px; }
+        .nav-btn { background: #30363d; border: 1px solid #3d444d; color: #e6edf3; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.12s ease; min-width: 28px; text-align: center; }
+        .nav-btn:hover { background: #484f58; border-color: #58a6ff; }
+        .nav-btn:disabled { background: #21262d; color: #656d76; cursor: not-allowed; border-color: #30363d; }
+        .address-bar { flex: 1; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; padding: 8px 12px; border-radius: 4px; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace; font-size: 13px; }
+        .address-bar:focus { outline: none; border-color: #58a6ff; }
+        .go-btn { background: #0969da; border: 1px solid #1f6feb; color: #ffffff; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.12s ease; }
+        .go-btn:hover { background: #1f6feb; }
+        
+        /* Fixed header */
+        .header { 
+            background: #21262d; 
+            padding: 16px 24px; 
+            color: #f0f6fc; 
+            border-bottom: 1px solid #30363d; 
+            position: relative;
+            height: 80px;
+            min-height: 80px;
+            max-height: 80px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .page-title { font-size: 16px; font-weight: 600; margin: 0; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .page-url { font-size: 13px; color: #7d8590; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Fixed view toggle button */
+        .view-toggle { position: absolute; top: 20px; right: 20px; background: #21262d; border: 1px solid #30363d; color: #e6edf3; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.12s ease; z-index: 10; display: none; }
+        .view-toggle:hover { background: #30363d; border-color: #58a6ff; }
+        
+        /* Fixed browser area */
+        .browser-area { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 32px; 
+            background: #0d1117; 
+            position: relative;
+            height: calc(100vh - 200px);
+            min-height: calc(100vh - 200px);
+            max-height: calc(100vh - 200px);
+        }
+        
+        /* Fixed content display styles */
+        .page-content { 
+            font-size: 14px; 
+            line-height: 1.7; 
+            color: #e6edf3; 
+            background: #0d1117; 
+            padding: 28px; 
+            border-radius: 8px; 
+            border: 1px solid #21262d; 
+            min-height: calc(100vh - 280px);
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .page-content.raw { 
+            white-space: pre-wrap; 
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace; 
+            overflow: auto;
+        }
+        
+        /* Enhanced link styles for Micron content */
+        .page-content a { color: #58a6ff; text-decoration: underline; cursor: pointer; transition: color 0.12s ease; }
+        .page-content a:hover { color: #79c0ff; }
+        .page-content .nomadnet-link { 
+            color: #58a6ff; 
+            background: #0969da20; 
+            padding: 2px 6px; 
+            border-radius: 3px; 
+            border: 1px solid #0969da40; 
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-block;
+            margin: 1px 2px;
+        }
+        .page-content .nomadnet-link:hover { 
+            background: #0969da40; 
+            border-color: #0969da80; 
+            color: #79c0ff;
+            text-decoration: none;
+        }
+        
+        .error { color: #ff7b72; background: #490202; padding: 20px; border: 1px solid #da3633; border-radius: 8px; }
+        .welcome { text-align: center; padding: 60px 40px; color: #7d8590; }
+        .welcome h2 { color: #f0f6fc; font-size: 28px; font-weight: 700; margin-bottom: 16px; }
+        .welcome p { font-size: 16px; line-height: 1.6; max-width: 500px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+    <div class="main">
+        <div class="sidebar">
+            <div class="sidebar-top">
+                <h2>NomadNetwork Nodes</h2>
+            </div>
+            <div class="node-list-container">
+                <div class="node-list" id="node-list">
+                    <div style="text-align: center; padding: 20px; color: #7d8590; font-size: 12px;">Scanning for nodes...</div>
+                </div>
+            </div>
+            <div class="status-bar">
+                <span class="online">● Online (Reticulum Connected!)</span><br>  
+                NomadNet Node Pages Found: <span id="node-count">0</span><br> 
+                Total NomadNetwork Announces: <span id="announce-count">0</span>
+            </div>
+        </div>
+        <div class="content">
+            <div class="nav-bar">
+                <div class="nav-controls">
+                    <button class="nav-btn" id="back-btn" onclick="navigateBack()" disabled>←</button>
+                    <button class="nav-btn" id="forward-btn" onclick="navigateForward()" disabled>→</button>
+                    <button class="nav-btn" onclick="refreshPage()">⟳</button>
+                </div>
+                <input type="text" class="address-bar" id="address-bar" placeholder="Enter NomadNet URL (hash:/path/to/page.mu)" onkeypress="handleAddressBarEnter(event)">
+                <button class="go-btn" onclick="navigateToUrl()">Go</button>
+            </div>
+            <div class="header">
+                <div class="page-title" id="page-title">Select a node from the list and press browse button.</div>
+                <div class="page-url" id="page-url"></div>
+                <button class="view-toggle" id="view-toggle" onclick="toggleView()">Raw View</button>
+            </div>
+            <div class="browser-area">
+                <div class="page-content" id="page-content">
+                    <div class="welcome">
+                        <h2>NomadNet Browser</h2>
+                        <p>Welcome to the NomadNet Standalone Browser with Micron Parser<br>This browser connects to Reticulum and listens for NomadNetwork Nodes serving pages.<br>Wait for announces and select a node from the sidebar to explore distributed content.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load DOMPurify for security -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+
+    <script>
+        let selectedNode = null;
+        let currentRequest = null;
+        let currentRawContent = '';
+        let isRawView = false;
+        let micronParser = null;
+        let isOriginalParser = false;
+        let navigationHistory = [];
+        let historyIndex = -1;
+        let currentUrl = '';
+
+        // Initialize MicronParser
+        async function initializeMicronParser() {
+            try {
+                console.log('Initializing MicronParser...');
+                
+                // Load the original micron parser script
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = './script/micron-parser_original.js';
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+                
+                // Wait for script to execute
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                // Try to initialize the parser
+                if (typeof window.MicronParser === 'function') {
+                    micronParser = new window.MicronParser(true, true);
+                    isOriginalParser = true;
+                    console.log('✅ Original MicronParser loaded successfully');
+                } else {
+                    throw new Error('MicronParser not available');
+                }
+            } catch (error) {
+                console.warn('⚠️ Original parser failed, using fallback:', error.message);
+                micronParser = createFallbackParser();
+                isOriginalParser = false;
+            }
+        }
+
+        function createFallbackParser() {
+            return {
+                convertMicronToHtml: function(text) {
+                    let html = text;
+                    
+                    // Basic Micron formatting (simplified)
+                    html = html.replace(/`!([^`]*)`!/g, '<strong style="color: #58a6ff; font-weight: bold;">$1</strong>');
+                    html = html.replace(/`\*([^`]*)`\*/g, '<em style="color: #ffa657; font-style: italic;">$1</em>');
+                    html = html.replace(/`_([^`]*)`_/g, '<span style="text-decoration: underline; color: #79c0ff;">$1</span>');
+                    html = html.replace(/^>([^\n]*)/gm, '<div style="color: #58a6ff; font-weight: bold; font-size: 18px; margin: 16px 0 8px 0; border-bottom: 1px solid #30363d; padding-bottom: 4px;">$1</div>');
+                    html = html.replace(/\n/g, '<br>');
+                    
+                    // Escape HTML
+                    html = escapeHtml(html);
+                    
+                    return `<div style="font-family: 'Courier New', 'Liberation Mono', 'DejaVu Sans Mono', Courier, monospace; line-height: 1.6;">${html}</div>`;
+                }
+            };
+        }
+
+        function parseMicronContent(content) {
+            if (!content) return '';
+            
+            console.log('Parsing Micron content, length:', content.length);
+            
+            if (micronParser) {
+                let html = micronParser.convertMicronToHtml(content);
+                
+                // Add click handlers to any links that the original parser created
+                html = addClickHandlersToLinks(html);
+                
+                console.log('Micron parsing complete');
+                return html;
+            } else {
+                console.log('No parser available, returning escaped HTML');
+                return escapeHtml(content);
+            }
+        }
+
+        function addClickHandlersToLinks(html) {
+            // Find existing <a> tags and add navigation handlers if they look like NomadNet URLs
+            return html.replace(/<a([^>]*?)href=["']([^"']*?)["']([^>]*?)>/g, function(match, before, href, after) {
+                // Check if it's a NomadNet URL format
+                if (isNomadNetUrl(href)) {
+                    const url = normalizeNomadNetUrl(href);
+                    return `<a${before} href="#" class="nomadnet-link" onclick="navigateToNomadNetUrl('${url}'); return false;" title="Navigate to ${url}"${after}>`;
+                }
+                return match; // Keep other links as-is
+            });
+        }
+
+        function isNomadNetUrl(url) {
+            // Check if URL looks like a NomadNet URL
+            return url.match(/^(nomadnetwork:\/\/|[a-fA-F0-9<>:]{32,}[:\/])/);
+        }
+
+        function normalizeNomadNetUrl(url) {
+            // Convert various formats to our standard format: hash:/path
+            if (url.startsWith('nomadnetwork://')) {
+                const match = url.match(/nomadnetwork:\/\/([a-fA-F0-9<>:]+)(\/.*)?/);
+                if (match) {
+                    const cleanHash = match[1].replace(/[<>:]/g, '');
+                    const path = match[2] || '/page/index.mu';
+                    return `${cleanHash}:${path}`;
+                }
+            }
+            return url;
+        }
+
+        function navigateToNomadNetUrl(url) {
+            console.log('Link clicked! Navigating to:', url);
+            const addressBar = document.getElementById('address-bar');
+            addressBar.value = url;
+            navigateToUrl();
+        }
+
+        function parseNomadNetUrl(url) {
+            console.log('Parsing URL:', url);
+            
+            // Clean up common URL prefixes
+            url = url.replace(/^nomadnetwork:\/\//, '');
+            
+            // Match hash and optional path
+            const match = url.match(/^([a-fA-F0-9<>:]{32,})(?:[:\/](.*))?$/);
+            if (match) {
+                const cleanHash = match[1].replace(/[<>:]/g, '');
+                let path = match[2];
+                
+                // Default to index page if no path
+                if (!path || path === '') {
+                    path = 'page/index.mu';
+                }
+                
+                // Ensure path starts with /
+                if (!path.startsWith('/')) {
+                    path = '/' + path;
+                }
+                
+                console.log('Parsed URL - Hash:', cleanHash.substring(0, 16) + '...', 'Path:', path);
+                return { hash: cleanHash, path: path };
+            }
+            
+            console.log('Failed to parse URL:', url);
+            return null;
+        }
+
+        function addToHistory(url) {
+            if (url !== currentUrl) {
+                // Remove any forward history when navigating to new page
+                navigationHistory = navigationHistory.slice(0, historyIndex + 1);
+                navigationHistory.push(url);
+                historyIndex = navigationHistory.length - 1;
+                currentUrl = url;
+                updateNavigationButtons();
+                console.log('Added to history:', url);
+            }
+        }
+
+        function updateNavigationButtons() {
+            const backBtn = document.getElementById('back-btn');
+            const forwardBtn = document.getElementById('forward-btn');
+            
+            backBtn.disabled = historyIndex <= 0;
+            forwardBtn.disabled = historyIndex >= navigationHistory.length - 1;
+        }
+
+        function navigateBack() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                const url = navigationHistory[historyIndex];
+                currentUrl = url;
+                document.getElementById('address-bar').value = url;
+                navigateToUrlInternal(url, false);
+                updateNavigationButtons();
+                console.log('Navigated back to:', url);
+            }
+        }
+
+        function navigateForward() {
+            if (historyIndex < navigationHistory.length - 1) {
+                historyIndex++;
+                const url = navigationHistory[historyIndex];
+                currentUrl = url;
+                document.getElementById('address-bar').value = url;
+                navigateToUrlInternal(url, false);
+                updateNavigationButtons();
+                console.log('Navigated forward to:', url);
+            }
+        }
+
+        function refreshPage() {
+            if (currentUrl) {
+                console.log('Refreshing page:', currentUrl);
+                navigateToUrlInternal(currentUrl, false);
+            }
+        }
+
+        function handleAddressBarEnter(event) {
+            if (event.key === 'Enter') {
+                navigateToUrl();
+            }
+        }
+
+        function navigateToUrl() {
+            const url = document.getElementById('address-bar').value.trim();
+            if (url) {
+                console.log('Manual navigation to:', url);
+                navigateToUrlInternal(url, true);
+            }
+        }
+
+        function navigateToUrlInternal(url, addHistory = true) {
+            const parsed = parseNomadNetUrl(url);
+            if (!parsed) {
+                alert('Invalid NomadNet URL format. Examples:\n- abcd1234...:/page/index.mu\n- nomadnetwork://abcd1234.../page/index.mu');
+                return;
+            }
+
+            if (addHistory) {
+                addToHistory(url);
+            }
+
+            console.log('Navigating to parsed URL:', parsed);
+            console.log('🔥 About to call fetchPageByUrl with:', parsed.hash, parsed.path, url);
+            fetchPageByUrl(parsed.hash, parsed.path, url);
+        }
+
+        function fetchPageByUrl(hash, path, originalUrl) {
+            if (currentRequest) {
+                console.log('Cancelling previous request');
+                currentRequest.abort();
+                currentRequest = null;
+            }
+            
+            selectedNode = hash;
+            document.getElementById('page-title').textContent = `Loading: ${originalUrl}...`;
+            document.getElementById('page-url').textContent = '';
+            document.getElementById('page-content').innerHTML = '<div style="color: #58a6ff; text-align: center; padding: 40px; font-size: 16px;">Loading NomadNet page...<br>Please wait...</div>';
+            document.getElementById('view-toggle').style.display = 'none';
+            document.getElementById('address-bar').value = originalUrl;
+            
+            // Update selected node in sidebar
+            document.querySelectorAll('.node-item').forEach(item => item.classList.remove('selected'));
+            const nodeItem = document.querySelector(`[data-hash="${hash}"]`);
+            if (nodeItem) {
+                nodeItem.classList.add('selected');
+            }
+            
+            const controller = new AbortController();
+            currentRequest = controller;
+            
+            console.log('Fetching page from API:', `/api/fetch/${hash}?path=${encodeURIComponent(path)}`);
+            
+            fetch(`/api/fetch/${hash}?path=${encodeURIComponent(path)}`, { signal: controller.signal })
+                .then(r => r.json())
+                .then(response => {
+                    if (currentRequest === controller) {
+                        if (response.status === 'success') {
+                            console.log('Page loaded successfully, content length:', response.content.length);
+                            currentRawContent = response.content;
+                            isRawView = false;
+                            
+                            // Parse and render with MicronParser
+                            const renderedHtml = parseMicronContent(response.content);
+                            document.getElementById('page-content').innerHTML = renderedHtml;
+                            document.getElementById('page-content').className = 'page-content';
+                            
+                            const nodeName = nodeItem ? nodeItem.getAttribute('data-name') : `Node ${hash.substring(0, 8)}`;
+                            document.getElementById('page-title').textContent = `${nodeName} - ${path}`;
+                            document.getElementById('page-url').textContent = originalUrl;
+                            document.getElementById('view-toggle').style.display = 'block';
+                            document.getElementById('view-toggle').textContent = 'Raw View';
+                            
+                            console.log('Page rendered with', isOriginalParser ? 'original' : 'fallback', 'parser');
+                            
+                            // Count links found
+                            const linkCount = document.querySelectorAll('#page-content a').length;
+                            console.log('Found', linkCount, 'links in content');
+                            
+                        } else {
+                            console.log('Failed to load page:', response.error);
+                            document.getElementById('page-content').innerHTML = `<div class="error">Failed to load page: ${escapeHtml(response.error)}<br><br>This could be due to network issues or the node being offline.</div>`;
+                            document.getElementById('page-title').textContent = `Error loading ${originalUrl}`;
+                            document.getElementById('page-url').textContent = '';
+                            document.getElementById('view-toggle').style.display = 'none';
+                        }
+                        currentRequest = null;
+                    }
+                })
+                .catch(err => {
+                    if (currentRequest === controller && !controller.signal.aborted) {
+                        console.log('Network error:', err.message);
+                        document.getElementById('page-content').innerHTML = `<div class="error">Network error: ${escapeHtml(err.message)}<br><br>Please check your connection and try again.</div>`;
+                        document.getElementById('page-title').textContent = `Error loading ${originalUrl}`;
+                        document.getElementById('page-url').textContent = '';
+                        document.getElementById('view-toggle').style.display = 'none';
+                        currentRequest = null;
+                    }
+                });
+        }
+
+        function toggleView() {
+            const content = document.getElementById('page-content');
+            const toggle = document.getElementById('view-toggle');
+            
+            if (isRawView) {
+                // Switch to rendered view
+                console.log('Switching to rendered view');
+                const renderedHtml = parseMicronContent(currentRawContent);
+                content.innerHTML = renderedHtml;
+                content.className = 'page-content';
+                
+                // Re-add event handlers after switching to rendered view
+                addEventHandlersToRenderedContent();
+                
+                toggle.textContent = 'Raw View';
+                isRawView = false;
+                
+                // Count links after rendering
+                const linkCount = document.querySelectorAll('#page-content a').length;
+                console.log('Rendered view shows', linkCount, 'links');
+            } else {
+                // Switch to raw view
+                console.log('Switching to raw view');
+                content.innerHTML = escapeHtml(currentRawContent);
+                content.className = 'page-content raw';
+                toggle.textContent = 'Rendered View';
+                isRawView = true;
+            }
+        }
+        
+        function updateNodes() {
+            fetch('/api/nodes')
+                .then(r => r.json())
+                .then(nodes => {
+                    const list = document.getElementById('node-list');
+                    
+                    if (nodes.length === 0) {
+                        list.innerHTML = '<div style="text-align: center; padding: 20px; color: #7d8590; font-size: 12px;">Scanning for NomadNet Nodes...</div>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    nodes.forEach((node, i) => {
+                        const selected = selectedNode === node.hash ? 'selected' : '';
+                        html += `
+                            <div class="node-item ${selected}" id="node-${i}" data-hash="${escapeHtml(node.hash)}" data-name="${escapeHtml(node.name)}">
+                                <div class="node-title">${escapeHtml(node.name)}</div>
+                                <div class="node-hash">${node.hash}</div>
+                                <div class="node-info">📊 ${node.app_data_length} bytes • ${node.last_seen_relative}</div>
+                                <button class="browse-btn">Browse</button>
+                            </div>
+                        `;
+                    });
+                    
+                    list.innerHTML = html;
+                    
+                    document.querySelectorAll('.node-item').forEach(item => {
+                        item.addEventListener('click', function(e) {
+                            const hash = this.getAttribute('data-hash');
+                            const name = this.getAttribute('data-name');
+                            browseNode(hash, name);
+                        });
+                    });
+                    
+                    document.getElementById('node-count').textContent = nodes.length;
+                });
+        }
+        
+        function updateStatus() {
+            fetch('/api/status')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('announce-count').textContent = data.total_announces;
+                });
+        }
+        
+        function browseNode(hash, name) {
+            const url = `${hash}:/page/index.mu`;
+            console.log('Browsing node:', name, 'URL:', url);
+            document.getElementById('address-bar').value = url;
+            navigateToUrlInternal(url, true);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('NomadNet Browser starting...');
+            await initializeMicronParser();
+            
+            // Start regular updates
+            setInterval(() => {
+                updateNodes();
+                updateStatus();
+            }, 3000);
+            
+            // Initial load
+            updateNodes();
+            updateStatus();
+            
+            console.log('Browser initialization complete');
+        });
+    </script>
+</body>
+</html>
