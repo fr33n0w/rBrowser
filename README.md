@@ -43,7 +43,11 @@ Script and Web UI Preview Coming Soon on rmap.world
    pip install -r requirements.txt
    ```
 
-3. **Verify file structure:**
+3. **Configure Reticulum:**
+   
+   Before launching the script you need a full working instance of Reticulum, so you need to configure at least a TCPClientInterface in your ./reticulum/config file. Don't need to run rns manually, just make sure your instance is working and can connect to Reticulum Network!
+
+5. **Verify file structure:**
    ```
    nomadnet-browser/
    ├── nomadnet_browser.py
