@@ -6,8 +6,7 @@
         * { box-sizing: border-box; font-family: 'Courier New', 'Liberation Mono', 'DejaVu Sans Mono', Courier, monospace !important; }
         body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: hidden; }
         .main { display: flex; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0; }
-        
-        /* Fixed sidebar dimensions */
+
         .sidebar { 
             width: 320px; 
             min-width: 320px;
@@ -18,6 +17,7 @@
             flex-direction: column; 
             height: 100vh;
         }
+
         .sidebar-top { 
             background: #21262d; 
             padding: 10px 16px; 
@@ -27,17 +27,73 @@
             min-height: 50px;
             max-height: 50px;
         }
-        .sidebar-top h2 { margin: 0; font-size: 14px; font-weight: 600; color: #f0f6fc; line-height: 30px; }
-        
-        /* Fixed scrollable node list */
+
+        /* NEW: Search container */
+        .search-container {
+            background: #161b22;
+            padding: 8px;
+            border-bottom: 1px solid #30363d;
+            flex-shrink: 0;
+            height: 50px;
+            min-height: 50px;
+            max-height: 50px;
+        }
+
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .node-search {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            padding: 8px 12px;
+            padding-right: 35px; /* Make room for the X button */
+            border-radius: 4px;
+            font-size: 12px;
+            width: 100%;
+            margin: 0;
+            height: 34px;
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 8px;
+            background: none;
+            border: none;
+            color: #7d8590;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            transition: all 0.12s ease;
+        }
+
+        .search-clear:hover {
+            background: #30363d;
+            color: #e6edf3;
+        }
+
+        /* UPDATED: Node list container - now accounts for both header and search */
         .node-list-container { 
             flex: 1; 
             overflow-y: auto; 
-            height: calc(100vh - 140px);
-            min-height: calc(100vh - 140px);
-            max-height: calc(100vh - 140px);
+            height: calc(100vh - 190px);  /* 50px header + 50px search + 90px status */
+            min-height: calc(100vh - 190px);
+            max-height: calc(100vh - 190px);
         }
-        .node-list { padding: 6px; }
+
+        .node-list { 
+            padding: 6px; 
+            /* Remove any padding-top here */
+        }
         
         /* Compact node items - MADE CLICKABLE */
         .node-item { background: #21262d; border: 1px solid #30363d; margin: 0 0 4px 0; padding: 10px; border-radius: 6px; transition: all 0.12s ease; cursor: pointer; }
@@ -188,6 +244,12 @@
         <div class="sidebar">
             <div class="sidebar-top">
                 <h2>NomadNetwork Nodes</h2>
+            </div>
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <input type="text" class="node-search" id="node-search" placeholder="Search nodes by name or hash..." onkeyup="filterNodes()" oninput="toggleClearButton()">
+                    <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display: none;">×</button>
+                </div>
             </div>
             <div class="node-list-container">
                 <div class="node-list" id="node-list">
@@ -589,13 +651,26 @@
                 content.className = 'page-content';
                 
                 // Re-add event handlers after switching to rendered view
-                addEventHandlersToRenderedContent();
+                const links = document.querySelectorAll('#page-content a');
+                console.log('Re-adding event handlers to', links.length, 'links');
+                
+                function handleClick() {
+                    const action = this.getAttribute('data-action');
+                    const destination = this.getAttribute('data-destination');
+                    const fields = this.getAttribute('data-fields');
+                    console.log('Action:', action, 'Destination:', destination, 'Fields:', fields);
+                    navigateToLink(destination);
+                }
+
+                links.forEach(link => {
+                    link.addEventListener('click', handleClick);
+                });
                 
                 toggle.textContent = 'Raw View';
                 isRawView = false;
                 
                 // Count links after rendering
-                const linkCount = document.querySelectorAll('#page-content a').length;
+                const linkCount = links.length;
                 console.log('Rendered view shows', linkCount, 'links');
             } else {
                 // Switch to raw view
@@ -606,12 +681,13 @@
                 isRawView = true;
             }
         }
-        
+
         function updateNodes() {
             fetch('/api/nodes')
                 .then(r => r.json())
                 .then(nodes => {
                     const list = document.getElementById('node-list');
+                    const searchTerm = document.getElementById('node-search').value.toLowerCase(); // Save current search
                     
                     if (nodes.length === 0) {
                         list.innerHTML = '<div style="text-align: center; padding: 20px; color: #7d8590; font-size: 12px;">Scanning for NomadNet Nodes...</div>';
@@ -625,13 +701,18 @@
                             <div class="node-item ${selected}" id="node-${i}" data-hash="${escapeHtml(node.hash)}" data-name="${escapeHtml(node.name)}">
                                 <div class="node-title">${escapeHtml(node.name)}</div>
                                 <div class="node-hash">${node.hash}</div>
-                                <div class="node-info">📊 ${node.app_data_length} bytes • ${node.last_seen_relative}</div>
+                                <div class="node-info">📊 ${node.app_data_length} bytes announced • ${node.last_seen_relative}</div>
                                 <button class="browse-btn">Browse</button>
                             </div>
                         `;
                     });
                     
                     list.innerHTML = html;
+                    
+                    // Reapply search filter if there was one
+                    if (searchTerm) {
+                        filterNodes();
+                    }
                     
                     document.querySelectorAll('.node-item').forEach(item => {
                         item.addEventListener('click', function(e) {
@@ -666,6 +747,49 @@
             return div.innerHTML;
         }
         
+        function filterNodes() {
+            const searchTerm = document.getElementById('node-search').value.toLowerCase();
+            const nodeItems = document.querySelectorAll('.node-item');
+    
+            nodeItems.forEach(item => {
+                const name = item.getAttribute('data-name').toLowerCase();
+                const hash = item.getAttribute('data-hash').toLowerCase();
+        
+                if (name.includes(searchTerm) || hash.includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+    
+            // Update visible count
+            const visibleNodes = document.querySelectorAll('.node-item[style*="block"], .node-item:not([style*="none"])').length;
+            if (searchTerm) {
+                console.log(`Filtered to ${visibleNodes} nodes matching "${searchTerm}"`);
+            }
+        }
+
+        function toggleClearButton() {
+            const searchInput = document.getElementById('node-search');
+            const clearButton = document.getElementById('search-clear');
+            
+            if (searchInput.value.length > 0) {
+                clearButton.style.display = 'flex';
+            } else {
+                clearButton.style.display = 'none';
+            }
+        }
+
+        function clearSearch() {
+            const searchInput = document.getElementById('node-search');
+            const clearButton = document.getElementById('search-clear');
+            
+            searchInput.value = '';
+            clearButton.style.display = 'none';
+            filterNodes(); // Reapply filter (which will show all nodes)
+            searchInput.focus(); // Keep focus on search input
+        }
+
         // Initialize everything when page loads
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('NomadNet Browser starting...');
