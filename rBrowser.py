@@ -210,6 +210,10 @@ browser = NomadNetWebBrowser()
 def index():
     return render_template('index.html')
 
+@app.route('/style.css')
+def serve_css():
+    return send_from_directory('templates', 'style.css', mimetype='text/css')
+
 @app.route('/api/nodes')
 def api_nodes():
     return jsonify(browser.get_nodes())
