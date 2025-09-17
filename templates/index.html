@@ -368,13 +368,44 @@
                             const linkCount = links.length;
                             console.log('Found', linkCount, 'links in content');
 
-                            function handleClick() {
+                            function handleClick(event) {
+                                event.preventDefault(); // Prevent default link behavior
+    
                                 const action = this.getAttribute('data-action');
                                 const destination = this.getAttribute('data-destination');
                                 const fields = this.getAttribute('data-fields');
-
+    
                                 console.log('Action:', action, 'Destination:', destination, 'Fields:', fields);
-
+    
+                                // Check if destination contains LXMF address
+                                if (destination && destination.includes('lxmf@')) {
+                                    // Show informational alert for LXMF addresses
+                                    alert("This is an LXMF address, use official LXMF clients to open this link and chat with the peer (MeshChat, Sideband)");
+                                    return;
+                                }
+    
+                                // Check if destination contains HTTP/HTTPS URL
+                                if (destination && (destination.includes('http://') || destination.includes('https://'))) {
+                                    // Extract the actual HTTP URL
+                                    let httpUrl = destination;
+        
+                                    // If it's wrapped in nomadnetwork:// format, extract the inner URL
+                                    if (destination.startsWith('nomadnetwork://')) {
+                                        httpUrl = destination.replace('nomadnetwork://', '');
+                                    }
+        
+                                    // Show confirmation dialog
+                                    const userConfirmed = confirm("Open HTTP page in external browser?\n\nURL: " + httpUrl);
+        
+                                    if (userConfirmed) {
+                                        // Open in new window/tab
+                                        window.open(httpUrl, '_blank', 'noopener,noreferrer');
+                                    }
+                                    // If user clicks "No", just return and do nothing
+                                    return;
+                                }
+    
+                                // For regular NomadNet links, proceed with normal navigation
                                 navigateToLink(destination);
                             }
 
