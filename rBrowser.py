@@ -243,6 +243,21 @@ def api_fetch_page(node_hash):
     
     return jsonify(response)
 
+@app.route('/script/purify.min.js')
+def serve_purify():
+    """Serve the DOMPurify library"""
+    try:
+        script_path = os.path.join('script', 'purify.min.js')
+        if os.path.exists(script_path):
+            print(f"✅ Serving DOMPurify from: {script_path}")
+            return send_from_directory('script', 'purify.min.js', mimetype='application/javascript')
+        else:
+            print(f"❌ DOMPurify not found at: {script_path}")
+            return "console.error('DOMPurify file not found');", 404
+    except Exception as e:
+        print(f"❌ Error serving DOMPurify: {e}")
+        return f"console.error('Error loading DOMPurify: {str(e)}');", 500
+
 @app.route('/script/micron-parser_original.js')
 def serve_micron_parser():
     """Serve the modified micron parser script"""
