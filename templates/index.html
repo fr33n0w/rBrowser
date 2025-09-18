@@ -66,6 +66,35 @@
         let navigationHistory = [];
         let historyIndex = -1;
         let currentUrl = '';
+        let cachedNodes = [];
+
+        // Get Node Name function
+        function getNodeName(hash) {
+            console.log('Looking for hash:', hash);
+            console.log('Cached nodes available:', cachedNodes.length);
+    
+            // First try to find in DOM
+            const nodeItem = document.querySelector(`[data-hash="${hash}"]`);
+            if (nodeItem) {
+                const nodeName = nodeItem.getAttribute('data-name');
+                console.log('Getting node name for hash:', hash, '-> Name (from DOM):', nodeName);
+                return nodeName;
+            }
+    
+            // If not in DOM, check cached nodes data
+            const cachedNode = cachedNodes.find(node => {
+                console.log('Comparing:', hash, 'vs', node.hash);
+                return node.hash === hash;
+            });
+    
+            if (cachedNode) {
+                console.log('Getting node name for hash:', hash, '-> Name (from cache):', cachedNode.name);
+                return cachedNode.name;
+            }
+    
+            console.log('Getting node name for hash:', hash, '-> Name (fallback):', hash);
+            return hash;
+        }
 
         // Initialize MicronParser
         async function initializeMicronParser() {
@@ -323,7 +352,8 @@
             }
             
             selectedNode = hash;
-            document.getElementById('page-title').textContent = `Loading: ${originalUrl}...`;
+            const nodeName = getNodeName(hash);
+            document.getElementById('page-title').textContent = `Loading: ${nodeName}...`;
             document.getElementById('page-url').textContent = '';
             document.getElementById('page-content').innerHTML = '<div style="color: #58a6ff; text-align: center; padding: 40px; font-size: 16px;">Loading NomadNet page...<br>Please wait...</div>';
             document.getElementById('view-toggle').style.display = 'none';
@@ -355,7 +385,7 @@
                             document.getElementById('page-content').innerHTML = renderedHtml;
                             document.getElementById('page-content').className = 'page-content';
                             
-                            const nodeName = nodeItem ? nodeItem.getAttribute('data-name') : `Node ${hash.substring(0, 8)}`;
+                            const nodeName = getNodeName(hash);
                             document.getElementById('page-title').textContent = `${nodeName} - ${path}`;
                             document.getElementById('page-url').textContent = originalUrl;
                             document.getElementById('view-toggle').style.display = 'block';
@@ -482,6 +512,10 @@
             fetch('/api/nodes')
                 .then(r => r.json())
                 .then(nodes => {
+                    cachedNodes = nodes;
+                    console.log('Cached nodes updated:', cachedNodes.length, 'nodes');
+                    console.log('First cached node hash example:', cachedNodes.length > 0 ? cachedNodes[0].hash : 'none');
+
                     const list = document.getElementById('node-list');
                     const searchTerm = document.getElementById('node-search').value.toLowerCase(); // Save current search
                     

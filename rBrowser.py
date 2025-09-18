@@ -141,6 +141,7 @@ class NomadNetWebBrowser:
     def process_nomadnet_announce(self, destination_hash, announced_identity, app_data):
         self.announce_count += 1
         hash_str = RNS.prettyhexrep(destination_hash)
+        clean_hash_str = hash_str.replace("<", "").replace(">", "").replace(":", "")
         
         node_name = "UNKNOWN"
         if app_data:
@@ -161,7 +162,7 @@ class NomadNetWebBrowser:
             return
         
         self.nomadnet_nodes[hash_str] = {
-            "hash": hash_str,
+            "hash": clean_hash_str,
             "name": node_name,
             "last_seen": datetime.now().isoformat(),
             "announce_count": self.announce_count,
