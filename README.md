@@ -1,13 +1,18 @@
 # rBrowser v1.0
-<img width="1920" height="996" alt="v1screenshot" src="https://github.com/user-attachments/assets/d7f14680-0dbe-4c9f-b326-802ffd8946ce" />
+
+-----
+
+<img width="1920" height="1080" alt="screenshot2" src="https://github.com/user-attachments/assets/b0565bdf-2ad8-43e4-a4f1-f74fc877b199" />
 
 -----
 
 # rBrowser: Reticulum Standalone NomadNet Browser
 
-A standalone web-based browser for exploring NomadNetwork nodes and pages over the Reticulum mesh network. This browser automatically discovers NomadNet nodes through network announces and provides a user-friendly interface for browsing distributed content with Micron markup support.
+A standalone web-based UI browser for exploring NomadNetwork Nodes and Pages over Reticulum Network. 
 
-Script and Web UI Preview Coming Soon on rmap.world
+This browser automatically discovers NomadNet nodes through network announces and provides a user-friendly interface for browsing distributed content with Micron markup support.
+
+-----
 
 ## Features
 
@@ -15,8 +20,8 @@ Script and Web UI Preview Coming Soon on rmap.world
 - **Web-based Interface**: Modern, responsive browser interface accessible at `localhost:5000`
 - **Micron Parser**: Renders NomadNet's Micron markup language with proper formatting and styling
 - **URL Navigation**: Address bar with back/forward navigation and manual URL input
-- **Dual View Modes**: Toggle between rendered Micron content and raw text view
-- **Link Navigation**: Click on links within Micron content to navigate between pages (COMING SOON!)
+- **Dual View Modes**: Toggle between rendered Micron content and raw text view (top-right Rendered / Raw button)
+- **Link Navigation**: Click on links within Micron content to navigate between pages
 - **Connection Status**: Real-time display of network status and discovered pages / announced nodes
 
 ## Requirements
@@ -27,8 +32,10 @@ Script and Web UI Preview Coming Soon on rmap.world
 - **Network**: Access to a Reticulum network (radio interfaces, internet gateways, or local testnet)
 
 ### Python Dependencies
-- `flask` >= 2.0.0 - Web framework for the browser interface
-- `reticulum` >= rns 1.0.0 - Mesh networking library for NomadNetwork protocol
+- `flask` >= 2.0.0 - Web framework for the browser UI interface
+- `reticulum` >= rns 1.0.0 - Reticulum networking protocol stack for connection and NomadNetwork retrival
+
+-----
 
 ## Installation
 
@@ -47,15 +54,7 @@ Script and Web UI Preview Coming Soon on rmap.world
    
    Before launching the script you need a full working instance of Reticulum, so you need to configure at least a TCPClientInterface in your ./reticulum/config file. Don't need to run rns manually, just make sure your instance is working and can connect to Reticulum Network!
 
-5. **Verify file structure:**
-   ```
-   nomadnet-browser/
-   ├── nomadnet_browser.py
-   ├── templates/
-   │   └── index.html
-   └── script/
-       └── micron-parser_original.js
-   ```
+-----
 
 ## Running the Browser
 
@@ -72,7 +71,7 @@ Script and Web UI Preview Coming Soon on rmap.world
 3. **Wait for node discovery:**
    - The browser will start listening for NomadNetwork announces
    - Discovered nodes will appear in the left sidebar
-   - Click on any node to browse its content
+   - Click on any node to browse its content and navigate pages
 
 ## Usage
 
@@ -86,7 +85,7 @@ Script and Web UI Preview Coming Soon on rmap.world
 - **Back/Forward**: Navigate through browsing history
 - **Refresh**: Reload the current page
 - **Node Sidebar**: Click any discovered node to browse
-- **Link Clicking**: Click links within Micron content to navigate (Coming Soon!)
+- **Link Clicking**: Click links within Micron content to navigate
 
 ### View Modes
 - **Rendered View**: Displays Micron markup with proper formatting
@@ -102,34 +101,27 @@ Script and Web UI Preview Coming Soon on rmap.world
 - ✅ **URL Navigation**: Address bar with manual URL input support
 - ✅ **Navigation History**: Back/forward button functionality
 - ✅ **Link Detection**: Automatic detection of NomadNet URLs in content
-- ✖️ **Click Navigation**: Navigate by clicking links in rendered content
+- ✅ **Click Navigation**: Navigate by clicking links in rendered content
+- ✅ **Multiple URL Formats**: Enhanced parsing for various NomadNet URL conventions
+- ✅ **Page Title Extraction**: Parse and display proper page titles in all UI info text
+- ✅ **Navigation Breadcrumbs**: Show current node name and url location path
+- ✅ **Link Preview**: Hover tooltips showing destination URLs
 - ✅ **Dual View Modes**: Toggle between rendered and raw text views
 - ✅ **Error Handling**: Robust error handling for network issues and timeouts
+- ✅ **Complete Local Usage**: incorporated scripts, css and js without external call to any CDN's
 
-## Next Implementation: Enhanced Link Navigation
+## Next Implementations:
+### The following features are planned for the next version:
 
-The following features are planned for the next version:
+- ✖️ **File Download**: download files hosted on nomadnet, coming soon!
+- ✖️ **Form and input boxes**: sending user input in nomad pages, work in progress!
+- ✖️ **Fingerprint**: Send identity and lxmf address to the host node, coming soon!
+- ✖️ **New Tab/Window**: Option to open links in new browser tabs
+- ✖️ **Bookmark System**: Save frequently visited nodes and pages
+- ✖️ **Loading Indicators**: Progress bars for page loading
+- ✖️ **Search Functionality**: Search within page content and across nodes
 
-### 1. Improved Link Parser
-- **Relative Path Resolution**: Support for relative links like `../index.mu` or `posts/latest.mu`
-- **Multiple URL Formats**: Enhanced parsing for various NomadNet URL conventions
-- **Link Validation**: Verify link format before navigation attempts
-
-### 2. Enhanced Navigation Features
-- **Link Preview**: Hover tooltips showing destination URLs
-- **New Tab/Window**: Option to open links in new browser tabs
-- **Bookmark System**: Save frequently visited nodes and pages
-- **Navigation Breadcrumbs**: Show current location path
-
-### 3. Advanced Micron Support
-- **Table Support**: Proper rendering of Micron table markup
-- **Advanced Formatting**: Support for more complex Micron elements
-
-### 4. User Experience Improvements
-- **Loading Indicators**: Progress bars for page loading
-- **Cache System**: Local caching of frequently accessed pages
-- **Search Functionality**: Search within page content and across nodes
-- **Page Title Extraction**: Parse and display proper page titles
+-----
 
 ## Development Notes
 
@@ -138,10 +130,12 @@ The following features are planned for the next version:
 - The application runs as a single-page application with AJAX content loading
 - Fallback Micron parser is included if the original parser fails to load
 
+-----
+
 ## Troubleshooting
 
 **No nodes appearing:**
-- Verify Reticulum network connectivity
+- Verify Reticulum network connectivity and configuration!
 - Check that NomadNetwork nodes are active on your network
 - Ensure firewall allows Reticulum traffic
 
@@ -162,3 +156,5 @@ This project is open source. Please refer to the LICENSE file for details.
 ## Contributing
 
 Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
+
+# Developed by Franky & Thomas 
