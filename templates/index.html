@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>rBrowser v1.0 - NomadNet Nodes Standalone Page Browser</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,6 +12,15 @@
                 <div class="search-wrapper">
                     <input type="text" class="node-search" id="node-search" placeholder="Search nodes by name or hash..." onkeyup="filterNodes()" oninput="toggleClearButton()">
                     <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display: none;">×</button>
+                </div>
+            </div>
+            <div class="favorites-section" id="favorites-section" style="background: #21262d; border-bottom: 1px solid #30363d; padding: 8px; flex-shrink: 0; z-index: 100; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="color: #ffa657; font-size: 12px; font-weight: bold;">⭐ Favorites</span>
+                    <button id="favorites-toggle" onclick="toggleFavoritesSection()" style="background: none; border: none; color: #7d8590; cursor: pointer; font-size: 10px;">Hide</button>
+                </div>
+                <div class="favorites-list" id="favorites-list" style="background: #161b22; padding: 4px; border-radius: 4px; min-height: 20px;">
+                    <div style="text-align: center; color: #7d8590; font-size: 11px; padding: 8px;">No favorites yet</div>
                 </div>
             </div>
             <div class="node-list-container" style="position: absolute !important; top: 50px !important; bottom: 38px !important; left: 0 !important; right: 0 !important; overflow-y: auto !important;">
@@ -63,6 +73,7 @@
         let historyIndex = -1;
         let currentUrl = '';
         let cachedNodes = [];
+        let favoriteNodes = [];
 
         // Get Node Name function
         function getNodeName(hash) {
@@ -511,34 +522,43 @@
                     cachedNodes = nodes;
                     console.log('Cached nodes updated:', cachedNodes.length, 'nodes');
                     console.log('First cached node hash example:', cachedNodes.length > 0 ? cachedNodes[0].hash : 'none');
-
                     const list = document.getElementById('node-list');
                     const searchTerm = document.getElementById('node-search').value.toLowerCase(); // Save current search
-                    
+           
                     if (nodes.length === 0) {
                         list.innerHTML = '<div style="text-align: center; padding: 20px; color: #7d8590; font-size: 12px;">Scanning for NomadNet Nodes...</div>';
                         return;
                     }
-                    
+           
                     let html = '';
                     nodes.forEach((node, i) => {
                         const selected = selectedNode === node.hash ? 'selected' : '';
+                
+                        // Check if this node is favorited
+                        const isFavorite = favoriteNodes.some(fav => fav.hash === node.hash);
+                        const starIcon = isFavorite ? '★' : '☆';
+                        const starColor = isFavorite ? '#ffa657' : '#7d8590';
+                
                         html += `
                             <div class="node-item ${selected}" id="node-${i}" data-hash="${escapeHtml(node.hash)}" data-name="${escapeHtml(node.name)}">
-                                <div class="node-title">${escapeHtml(node.name)}</div>
-                                <div class="node-hash">${node.hash}</div>
-                                <div class="node-info">📊 ${node.app_data_length} bytes announced • ${node.last_seen_relative}</div>
+                                <div style="position: relative;">
+                                    <button class="star-btn" onclick="toggleFavorite('${node.hash}', '${escapeHtml(node.name)}'); event.stopPropagation();" 
+                                            style='position: absolute; top: 0; right: 0; background: none; border: none; color: ${starColor}; cursor: pointer; font-size: 25px; padding: 4px; z-index: 10;'>${starIcon}</button>
+                                    <div class="node-title">${escapeHtml(node.name)}</div>
+                                    <div class="node-hash">${node.hash}</div>
+                                    <div class="node-info">📊 ${node.app_data_length} bytes announced • ${node.last_seen_relative}</div>
+                                </div>
                             </div>
                         `;
                     });
-                    
+            
                     list.innerHTML = html;
-                    
+            
                     // Reapply search filter if there was one
                     if (searchTerm) {
                         filterNodes();
                     }
-                    
+            
                     document.querySelectorAll('.node-item').forEach(item => {
                         item.addEventListener('click', function(e) {
                             const hash = this.getAttribute('data-hash');
@@ -546,7 +566,7 @@
                             browseNode(hash, name);
                         });
                     });
-                    
+            
                     document.getElementById('node-count').textContent = nodes.length;
                 });
         }
@@ -615,11 +635,94 @@
             searchInput.focus(); // Keep focus on search input
         }
 
+        function loadFavorites() {
+            const stored = localStorage.getItem('nomadnet-favorites');
+            favoriteNodes = stored ? JSON.parse(stored) : [];
+            updateFavoritesDisplay();
+            
+            // Start with favorites list closed
+            const list = document.getElementById('favorites-list');
+            const button = document.getElementById('favorites-toggle');
+            if (list && button) {
+                list.style.display = 'none';
+                button.textContent = 'Show';
+            }
+        }
+
+        function saveFavorites() {
+            localStorage.setItem('nomadnet-favorites', JSON.stringify(favoriteNodes));
+        }
+
+        function toggleFavorite(hash, name) {
+            console.log('toggleFavorite called with:', hash, name);
+            const existing = favoriteNodes.findIndex(fav => fav.hash === hash);
+    
+            if (existing >= 0) {
+                favoriteNodes.splice(existing, 1);
+                console.log('Removed favorite, new count:', favoriteNodes.length);
+            } else {
+                favoriteNodes.push({ hash: hash, name: name });
+                console.log('Added favorite, new count:', favoriteNodes.length);
+            }
+    
+            saveFavorites();
+            updateFavoritesDisplay();
+            updateNodes(); // Refresh to update star icons
+        }
+
+        function updateFavoritesDisplay() {
+            console.log('updateFavoritesDisplay called, favoriteNodes:', favoriteNodes);
+            const list = document.getElementById('favorites-list');
+            
+            if (favoriteNodes.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: #7d8590; font-size: 11px; padding: 8px;">No favorites yet</div>';
+                return;
+            }
+            
+            let html = '';
+            favoriteNodes.forEach((fav, index) => {
+                html += `
+                    <div class="favorite-item" style="background: #0d1117; padding: 4px 6px; margin: 2px 0; border-radius: 3px; border: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center;">
+                        <span onclick="browseNode('${fav.hash}', '${fav.name}')" style="cursor: pointer; font-size: 11px; color: #58a6ff; flex: 1;">${fav.name}</span>
+                        <button onclick="removeFavorite('${fav.hash}'); event.stopPropagation();" style="background: none; border: none; color: #ff7b72; cursor: pointer; font-size: 12px; padding: 2px 4px; margin-left: 6px;">×</button>
+                    </div>
+                `;
+            });
+            
+            list.innerHTML = html;
+        }
+
+        function toggleFavoritesSection() {
+            const list = document.getElementById('favorites-list');
+            const button = document.getElementById('favorites-toggle');
+            
+            if (list.style.display === 'none') {
+                list.style.display = 'block';
+                button.textContent = 'Hide';
+            } else {
+                list.style.display = 'none';
+                button.textContent = 'Show';
+            }
+        }
+
+        function removeFavorite(hash) {
+            console.log('removeFavorite called with hash:', hash);
+            const index = favoriteNodes.findIndex(fav => fav.hash === hash);
+            
+            if (index >= 0) {
+                favoriteNodes.splice(index, 1);
+                console.log('Removed favorite, new count:', favoriteNodes.length);
+                saveFavorites();
+                updateFavoritesDisplay();
+                updateNodes(); // Refresh to update star icons
+            }
+        }
+
         // Initialize everything when page loads
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('NomadNet Browser starting...');
             await initializeMicronParser();
-            
+            loadFavorites();
             // Start regular updates
             setInterval(() => {
                 updateNodes();
