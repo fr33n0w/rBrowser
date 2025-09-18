@@ -23,7 +23,6 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     max-height: 50px;
 }
 
-/* NEW: Search container */
 .search-container {
     background: #161b22;
     padding: 8px;
@@ -76,13 +75,12 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     color: #e6edf3;
 }
 
-/* UPDATED: Node list container - now accounts for both header and search */
 .node-list-container { 
     flex: 1; 
     overflow-y: auto; 
-    height: calc(100vh - 190px);  /* 50px header + 50px search + 90px status */
-    min-height: calc(100vh - 190px);
-    max-height: calc(100vh - 190px);
+    height: calc(100vh - 88px);  /* 50px search + 38px status */
+    min-height: calc(100vh - 88px);
+    max-height: calc(100vh - 88px);
 }
 
 .node-list { 
@@ -106,16 +104,17 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 /* Fixed status bar */
 .status-bar { 
     background: #0d1117; 
-    padding: 8px 16px; 
+    padding: 4px 8px; 
     border-top: 1px solid #30363d; 
-    font-size: 13px; 
+    font-size: 12px; 
     color: #7d8590; 
     flex-shrink: 0; 
     font-weight: bold;
-    height: 90px;
-    min-height: 90px;
-    max-height: 90px;
+    height: 38px;
+    min-height: 38px;
+    max-height: 38px;
     overflow: hidden;
+    line-height: 1.1;
 }
 .status-bar .online { color: #3fb950; font-weight: bold; }
 .status-bar .count { color: #58a6ff; font-weight: bold; }

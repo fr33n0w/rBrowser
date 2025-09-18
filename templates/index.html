@@ -6,25 +6,21 @@
 </head>
 <body>
     <div class="main">
-        <div class="sidebar">
-            <div class="sidebar-top">
-                <h2>NomadNetwork Nodes</h2>
-            </div>
+        <div class="sidebar" style="position: relative; max-width: 210px !important;">
             <div class="search-container">
                 <div class="search-wrapper">
                     <input type="text" class="node-search" id="node-search" placeholder="Search nodes by name or hash..." onkeyup="filterNodes()" oninput="toggleClearButton()">
                     <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display: none;">×</button>
                 </div>
             </div>
-            <div class="node-list-container">
+            <div class="node-list-container" style="position: absolute !important; top: 50px !important; bottom: 38px !important; left: 0 !important; right: 0 !important; overflow-y: auto !important;">
                 <div class="node-list" id="node-list">
                     <div style="text-align: center; padding: 20px; color: #7d8590; font-size: 12px;">Scanning for nodes...</div>
                 </div>
             </div>
-            <div class="status-bar">
-                <span class="online">● Online (Reticulum Connected!)</span><br>  
-                NomadNet Node Pages Found: <span id="node-count">0</span><br> 
-                Total NomadNetwork Announces: <span id="announce-count">0</span>
+            <div class="status-bar" style="position: absolute !important; bottom: 0 !important; left: 0 !important; right: 0 !important; padding: 4px 8px !important; margin: 0 !important; font-size: 12px !important; line-height: 1.1 !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important; box-sizing: border-box !important;">
+                Status:<span class="online"><strong> ● Online.  Reticulum Connected!</strong></span><br>
+                ●Total Announces: <span class="count" id="announce-count">0</span> ●NomadNet Nodes: <span class="count" id="node-count">0</span>                
             </div>
         </div>
         <div class="content">
@@ -38,15 +34,15 @@
                 <button class="go-btn" onclick="navigateToUrl()">Go</button>
             </div>
             <div class="header">
-                <div class="page-title" id="page-title">Select a node from the list and press browse button.</div>
+                <div class="page-title" id="page-title"><br>Waiting for Announces... Select a node from the list to navigate pages</div>
                 <div class="page-url" id="page-url"></div>
                 <button class="view-toggle" id="view-toggle" onclick="toggleView()">Raw View</button>
             </div>
             <div class="browser-area">
                 <div class="page-content" id="page-content">
                     <div class="welcome">
-                        <h2>NomadNet Browser</h2>
-                        <p>Welcome to the NomadNet Standalone Browser with Micron Parser<br>This browser connects to Reticulum and listens for NomadNetwork Nodes serving pages.<br>Wait for announces and select a node from the sidebar to explore distributed content.</p>
+                        <h2>rBrowser v1.0</h2>
+                        <p>Welcome to the NomadNet Standalone Browser.<br>This browser connects to Reticulum and listens for NomadNetwork Nodes serving pages.<br>Wait for announces and select a node from the sidebar to explore the distributed content.</p>
                     </div>
                 </div>
             </div>
@@ -353,9 +349,9 @@
             
             selectedNode = hash;
             const nodeName = getNodeName(hash);
-            document.getElementById('page-title').textContent = `Loading: ${nodeName}...`;
+            document.getElementById('page-title').innerHTML = `<br>Loading Nomadnet Page: <strong>${nodeName}</strong>...`;
             document.getElementById('page-url').textContent = '';
-            document.getElementById('page-content').innerHTML = '<div style="color: #58a6ff; text-align: center; padding: 40px; font-size: 16px;">Loading NomadNet page...<br>Please wait...</div>';
+            document.getElementById('page-content').innerHTML = `<div style="color: #58a6ff; text-align: center; padding: 40px; font-size: 16px;">Loading NomadNet page:<br><br><strong>${nodeName}</strong><br><br>Please wait...</div>`;
             document.getElementById('view-toggle').style.display = 'none';
             document.getElementById('address-bar').value = originalUrl;
             
@@ -386,7 +382,7 @@
                             document.getElementById('page-content').className = 'page-content';
                             
                             const nodeName = getNodeName(hash);
-                            document.getElementById('page-title').textContent = `${nodeName} - ${path}`;
+                            document.getElementById('page-title').innerHTML = `<strong>${nodeName}</strong>  <span style="color: #7d8590; font-size: 12px;"> ${path} </span>`;
                             document.getElementById('page-url').textContent = originalUrl;
                             document.getElementById('view-toggle').style.display = 'block';
                             document.getElementById('view-toggle').textContent = 'Raw View';
@@ -425,7 +421,7 @@
                                     }
         
                                     // Show confirmation dialog
-                                    const userConfirmed = confirm("Open HTTP page in external browser?\n\nURL: " + httpUrl);
+                                    const userConfirmed = confirm("Open HTTP/HTTPS URL in a new browser window?\n\nURL: " + httpUrl);
         
                                     if (userConfirmed) {
                                         // Open in new window/tab
@@ -532,7 +528,6 @@
                                 <div class="node-title">${escapeHtml(node.name)}</div>
                                 <div class="node-hash">${node.hash}</div>
                                 <div class="node-info">📊 ${node.app_data_length} bytes announced • ${node.last_seen_relative}</div>
-                                <button class="browse-btn">Browse</button>
                             </div>
                         `;
                     });
