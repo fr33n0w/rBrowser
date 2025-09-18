@@ -110,8 +110,7 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **Error Handling**: Robust error handling for network issues and timeouts
 - ✅ **Complete Local Usage**: incorporated scripts, css and js without external call to any CDN's
 
-## Next Implementation: Enhanced Link Navigation
-
+## Next Implementations:
 ### The following features are planned for the next version:
 
 - ✖️ **File Download**: download files hosted on nomadnet, coming soon!
