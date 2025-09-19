@@ -158,4 +158,14 @@ This project is open source. Please refer to the LICENSE file for details.
 
 Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
 
-# Developed by Franky & Thomas 
+## External dependencies:
+
+This project includes micronparser.js and DOMPurify.min.js in local folders to avoid external url calls.
+
+This software and all their rights are owned by the respective developers. 
+
+-----
+
+# rBrowser v1.0
+
+# Developed with love by Franky & Thomas 
