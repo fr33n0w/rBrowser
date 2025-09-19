@@ -92,6 +92,9 @@
             <span class="shortcut-item">
                 <kbd>Ctrl + ← or →</kbd> Switch Tabs Left or Right
             </span>
+            <span class="shortcut-item">
+                <kbd>Ctrl + X</kbd> Close all other tabs
+            </span>
         </div>
 
     </div>
@@ -1052,6 +1055,10 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                         e.preventDefault();
                         switchToNextTab();
                         break;
+                    case 'x': 
+                        e.preventDefault();
+                        closeOtherTabs();
+                        break;
                 }
             }
             
@@ -1090,6 +1097,28 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             const currentIndex = tabs.findIndex(tab => tab.id === activeTabId);
             const nextIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0;
             switchToTab(tabs[nextIndex].id);
+        }
+
+        function closeOtherTabs() {
+            if (tabs.length <= 1) return; // Nothing to close if only one tab
+            
+            const currentActiveTab = getActiveTab();
+            if (!currentActiveTab) return;
+            
+            // Create array of tabs to close (all except active)
+            const tabsToClose = tabs.filter(tab => tab.id !== activeTabId);
+            
+            // Close all other tabs
+            tabsToClose.forEach(tab => {
+                // Remove DOM elements
+                document.querySelector(`[data-tab-id="${tab.id}"]`)?.remove();
+                document.getElementById(tab.id)?.remove();
+            });
+            
+            // Update tabs array to only contain the active tab
+            tabs = [currentActiveTab];
+            
+            console.log('Closed all tabs except active tab:', currentActiveTab.title);
         }
 
         // Initialize everything when page loads
