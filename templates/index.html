@@ -839,7 +839,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
            
                     let html = '';
                     nodes.forEach((node, i) => {
-                        const selected = selectedNode === node.hash ? 'selected' : '';
+                        const activeTab = getActiveTab();
+                        const selected = (activeTab && activeTab.selectedNode === node.hash) ? 'selected' : '';
                 
                         // Check if this node is favorited
                         const isFavorite = favoriteNodes.some(fav => fav.hash === node.hash);
@@ -1135,7 +1136,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             setInterval(() => {
                 updateNodes();
                 updateStatus();
-            }, 3000);
+            }, 1500);
             
             // Initial load
             updateNodes();
