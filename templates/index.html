@@ -30,36 +30,74 @@
             </div>
             <div class="status-bar" style="position: absolute !important; bottom: 0 !important; left: 0 !important; right: 0 !important; padding: 4px 8px !important; margin: 0 !important; font-size: 12px !important; line-height: 1.1 !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important; box-sizing: border-box !important;">
                 Status:<span class="online"><strong> ● Online.  Reticulum Connected!</strong></span><br>
-                ●Total Announces: <span class="count" id="announce-count">0</span> ●NomadNet Nodes: <span class="count" id="node-count">0</span>                
+                Total Announces: <span class="count" id="announce-count">0</span> - NomadNet Nodes: <span class="count" id="node-count">0</span>                
             </div>
         </div>
-        <div class="content">
-            <div class="nav-bar">
-                <div class="nav-controls">
-                    <button class="nav-btn" id="back-btn" onclick="navigateBack()" disabled>←</button>
-                    <button class="nav-btn" id="forward-btn" onclick="navigateForward()" disabled>→</button>
-                    <button class="nav-btn" onclick="refreshPage()">⟳</button>
+            <div class="content">
+            <!-- NEW: Tab bar section -->
+            <div class="tab-bar">
+                <div class="tabs-container" id="tabs-container">
+                    <!-- Tabs will be dynamically created here -->
                 </div>
-                <input type="text" class="address-bar" id="address-bar" placeholder="Enter NomadNet URL (hash:/path/to/page.mu)" onkeypress="handleAddressBarEnter(event)">
-                <button class="go-btn" onclick="navigateToUrl()">Go</button>
+                <button class="new-tab-btn" onclick="createNewTab()">+ New Tab</button>
             </div>
-            <div class="header">
-                <div class="page-title" id="page-title"><br>Waiting for Announces... Select a node from the list to navigate pages</div>
-                <div class="page-url" id="page-url"></div>
-                <button class="view-toggle" id="view-toggle" onclick="toggleView()">Raw View</button>
-            </div>
-            <div class="browser-area">
-                <div class="page-content" id="page-content">
-                    <div class="welcome">
-                        <h2>rBrowser v1.0</h2>
-                        <p>Welcome to the NomadNet Standalone Browser.<br>This browser connects to Reticulum and listens for NomadNetwork Nodes serving pages.<br>Wait for announces and select a node from the sidebar to explore the distributed content.</p>
-                    </div>
-                </div>
+            
+            <!-- MODIFIED: Tab content wrapper (replaces your existing nav-bar, header, browser-area) -->
+            <div class="tab-content-wrapper" id="tab-content-wrapper">
+                <!-- Each tab will have its own content area -->
             </div>
         </div>
     </div>
 
-    <!-- Load DOMPurify for security -->
+    <template id="tab-content-template">
+    <div class="tab-content">
+
+        <div class="nav-bar">
+            <div class="nav-controls">
+                <button class="nav-btn back-btn" onclick="navigateBack()" disabled>←</button>
+                <button class="nav-btn forward-btn" onclick="navigateForward()" disabled>→</button>
+                <button class="nav-btn" onclick="refreshPage()">⟳</button>
+            </div>
+            <input type="text" class="address-bar" id="address-bar" placeholder="Enter NomadNet URL (hash:/path/to/page.mu)" onkeypress="handleAddressBarEnter(event)">
+            <button class="go-btn" onclick="navigateToUrl()">Go</button>
+        </div>
+
+        <div class="header">
+            <div class="page-info">
+                <span class="page-title"><center>Select a node from the announce list, favorites, or paste an address into the bar to navigate pages.</center></span>
+                <span class="page-details"></span>
+            </div>
+            <button class="view-toggle">Raw View</button>
+        </div>
+
+        <div class="browser-area">
+            <div class="page-content">
+                <div class="welcome">
+                    <h2>rBrowser v1.0</h2>
+                    <p>Welcome to the NomadNet Standalone Browser.<br>This browser connects to Reticulum and listens for NomadNetwork Nodes serving pages.<br>Wait for announces and select a node from the sidebar to explore the distributed content.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="shortcuts-bar">
+            <span class="shortcut-item">
+                Browser Shortcuts: <kbd>Alt + N</kbd> Open New Tab
+            </span>
+            <span class="shortcut-item">
+                <kbd>Alt + X</kbd> Close Current Tab
+            </span>
+            <span class="shortcut-item">
+                <kbd>Alt + B</kbd> Reload Current Page
+            </span>
+            <span class="shortcut-item">
+                <kbd>Ctrl + ← or →</kbd> Switch Tabs Left or Right
+            </span>
+        </div>
+
+    </div>
+</template>
+
+    <!-- Load local DOMPurify js for security -->
     <script src="../script/purify.min.js"></script>
 
     <script>
@@ -74,6 +112,489 @@
         let currentUrl = '';
         let cachedNodes = [];
         let favoriteNodes = [];
+        let tabs = [];
+        let activeTabId = null;
+        let tabCounter = 0;
+
+// Tab class to manage individual tab state
+class BrowserTab {
+    constructor(id) {
+        this.id = id;
+        this.title = 'New Tab';
+        this.url = '';
+        this.loading = false;
+        this.selectedNode = null;
+        this.currentRequest = null;
+        this.currentRawContent = '';
+        this.isRawView = false;
+        this.navigationHistory = [];
+        this.historyIndex = -1;
+        this.currentUrl = '';
+        this.knownNodeName = null;
+    }
+    
+    setTitle(title) {
+        this.title = title || 'New Tab';
+        this.updateTabDisplay();
+    }
+    
+    setUrl(url) {
+        this.url = url;
+        this.currentUrl = url;
+        this.updateAddressBar();
+    }
+    
+    setLoading(loading) {
+        this.loading = loading;
+        this.updateTabDisplay();
+    }
+    
+    addToHistory(url) {
+        if (url !== this.currentUrl) {
+            this.navigationHistory = this.navigationHistory.slice(0, this.historyIndex + 1);
+            this.navigationHistory.push(url);
+            this.historyIndex = this.navigationHistory.length - 1;
+            this.currentUrl = url;
+            this.updateNavigationButtons();
+        }
+    }
+    
+    updateTabDisplay() {
+        const tabElement = document.querySelector(`[data-tab-id="${this.id}"]`);
+        if (tabElement) {
+            const titleElement = tabElement.querySelector('.tab-title');
+            titleElement.textContent = this.loading ? 'Loading...' : this.title;
+            tabElement.classList.toggle('loading', this.loading);
+        }
+    }
+    
+    updateAddressBar() {
+        if (this.id === activeTabId) {
+            const addressBar = document.querySelector(`#${this.id} .address-bar`);
+            if (addressBar) {
+                addressBar.value = this.url;
+            }
+        }
+    }
+    updateNavigationButtons() {
+        if (this.id === activeTabId) {
+            const backBtn = document.querySelector(`#${this.id} .back-btn`);
+            const forwardBtn = document.querySelector(`#${this.id} .forward-btn`);
+            
+            if (backBtn) backBtn.disabled = this.historyIndex <= 0;
+            if (forwardBtn) forwardBtn.disabled = this.historyIndex >= this.navigationHistory.length - 1;
+        }
+    }
+    
+}
+
+
+// NEW TAB MANAGEMENT FUNCTIONS
+function createNewTab() {
+    const tabId = `tab-${++tabCounter}`;
+    const tab = new BrowserTab(tabId);
+    tabs.push(tab);
+    
+    createTabElement(tab);
+    createTabContent(tab);
+    switchToTab(tabId);
+    
+    return tab;
+}
+
+function createTabElement(tab) {
+    const tabsContainer = document.getElementById('tabs-container');
+    
+    const tabElement = document.createElement('div');
+    tabElement.className = 'tab';
+    tabElement.setAttribute('data-tab-id', tab.id);
+    tabElement.innerHTML = `
+        <span class="tab-title">${tab.title}</span>
+        <span class="tab-close" onclick="closeTab('${tab.id}', event)">&times;</span>
+    `;
+    
+    tabElement.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('tab-close')) {
+            switchToTab(tab.id);
+        }
+    });
+    
+    tabsContainer.appendChild(tabElement);
+}
+
+function createTabContent(tab) {
+    const wrapper = document.getElementById('tab-content-wrapper');
+    const template = document.getElementById('tab-content-template');
+    const clone = template.content.cloneNode(true);
+    
+    const content = clone.querySelector('.tab-content');
+    content.id = tab.id;
+    
+    // Add event listeners to the cloned elements
+    const backBtn = content.querySelector('.back-btn');
+    const forwardBtn = content.querySelector('.forward-btn');
+    const refreshBtn = content.querySelector('.refresh-btn');
+    const goBtn = content.querySelector('.go-btn');
+    const addressBar = content.querySelector('.address-bar');
+    const viewToggle = content.querySelector('.view-toggle');
+    
+    if (backBtn) backBtn.onclick = () => navigateBackTab();
+    if (forwardBtn) forwardBtn.onclick = () => navigateForwardTab();
+    if (refreshBtn) refreshBtn.onclick = () => refreshPageTab();
+    if (goBtn) goBtn.onclick = () => navigateToUrlTab();
+    if (addressBar) addressBar.onkeypress = (e) => handleAddressBarEnterTab(e);
+    if (viewToggle) viewToggle.onclick = () => toggleViewTab();
+    
+    wrapper.appendChild(content);
+}
+
+function switchToTab(tabId) {
+    activeTabId = tabId;
+    
+    // Remove active class from all tabs and content
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    // Add active class to selected tab and content
+    const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
+    const contentElement = document.getElementById(tabId);
+    
+    if (tabElement && contentElement) {
+        tabElement.classList.add('active');
+        contentElement.classList.add('active');
+        
+        // Update the active tab's state
+        const activeTab = getActiveTab();
+        if (activeTab) {
+            activeTab.updateAddressBar();
+            activeTab.updateNavigationButtons();
+        }
+    }
+}
+
+function closeTab(tabId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    const tabIndex = tabs.findIndex(t => t.id === tabId);
+    if (tabIndex === -1) return;
+    
+    // Don't close if it's the only tab
+    if (tabs.length === 1) {
+        return;
+    }
+    
+    // Remove tab from array
+    tabs.splice(tabIndex, 1);
+    
+    // Remove DOM elements
+    document.querySelector(`[data-tab-id="${tabId}"]`)?.remove();
+    document.getElementById(tabId)?.remove();
+    
+    // If this was the active tab, switch to another
+    if (activeTabId === tabId) {
+        const nextTab = tabs[Math.max(0, tabIndex - 1)];
+        switchToTab(nextTab.id);
+    }
+}
+
+function getActiveTab() {
+    return tabs.find(t => t.id === activeTabId);
+}
+
+// MODIFIED VERSIONS OF YOUR EXISTING FUNCTIONS FOR TABS
+function navigateBackTab() {
+    const tab = getActiveTab();
+    if (tab && tab.historyIndex > 0) {
+        tab.historyIndex--;
+        const url = tab.navigationHistory[tab.historyIndex];
+        tab.setUrl(url);
+        navigateToUrlInternalTab(url, false);
+        tab.updateNavigationButtons();
+    }
+}
+
+function navigateForwardTab() {
+    const tab = getActiveTab();
+    if (tab && tab.historyIndex < tab.navigationHistory.length - 1) {
+        tab.historyIndex++;
+        const url = tab.navigationHistory[tab.historyIndex];
+        tab.setUrl(url);
+        navigateToUrlInternalTab(url, false);
+        tab.updateNavigationButtons();
+    }
+}
+
+function refreshPageTab() {
+    const tab = getActiveTab();
+    if (tab && tab.currentUrl) {
+        navigateToUrlInternalTab(tab.currentUrl, false);
+    }
+}
+
+function navigateToUrlTab() {
+    const tab = getActiveTab();
+    if (tab) {
+        const addressBar = document.querySelector(`#${tab.id} .address-bar`);
+        if (addressBar && addressBar.value) {
+            navigateToUrlInternalTab(addressBar.value, true);
+        }
+    }
+}
+
+function handleAddressBarEnterTab(event) {
+    if (event.key === 'Enter') {
+        navigateToUrlTab();
+    }
+}
+
+async function navigateToUrlInternalTab(url, addHistory = true) {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    const parsed = parseNomadNetUrl(url);
+    if (!parsed) {
+        alert('Invalid NomadNet URL format. Examples:\n- abcd1234...:/page/index.mu\n- nomadnetwork://abcd1234.../page/index.mu');
+        return;
+    }
+
+    if (addHistory) {
+        tab.addToHistory(url);
+    }
+
+    tab.setUrl(url);
+    
+    // NEW: Refresh cached nodes before fetching page to get latest node names
+    try {
+        const response = await fetch('/api/nodes');
+        const nodes = await response.json();
+        cachedNodes = nodes;
+        console.log('Refreshed cached nodes for manual navigation:', cachedNodes.length, 'nodes');
+    } catch (error) {
+        console.warn('Failed to refresh cached nodes:', error);
+    }
+    
+    fetchPageByUrlTab(parsed.hash, parsed.path, url);
+}
+
+function toggleViewTab() {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    const content = document.querySelector(`#${tab.id} .page-content`);
+    const toggle = document.querySelector(`#${tab.id} .view-toggle`);
+    
+    if (tab.isRawView) {
+        // Switch to rendered view
+        const renderedHtml = parseMicronContent(tab.currentRawContent);
+        content.innerHTML = renderedHtml;
+        content.className = 'page-content';
+        
+        // Re-add click handlers
+        addClickHandlersToCurrentTab();
+        
+        toggle.textContent = 'Raw View';
+        tab.isRawView = false;
+    } else {
+        // Switch to raw view
+        content.innerHTML = escapeHtml(tab.currentRawContent);
+        content.className = 'page-content raw';
+        toggle.textContent = 'Rendered View';
+        tab.isRawView = true;
+    }
+}
+
+function addClickHandlersToCurrentTab() {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    const links = document.querySelectorAll(`#${tab.id} .page-content a`);
+    
+    function handleClick(event) {
+        event.preventDefault();
+        const action = this.getAttribute('data-action');
+        const destination = this.getAttribute('data-destination');
+        const fields = this.getAttribute('data-fields');
+        
+        if (destination && destination.includes('lxmf@')) {
+            alert("This is an LXMF address, use official LXMF clients to open this link and chat with the peer (MeshChat, Sideband)");
+            return;
+        }
+        
+        if (destination && (destination.includes('http://') || destination.includes('https://'))) {
+            let httpUrl = destination;
+            if (destination.startsWith('nomadnetwork://')) {
+                httpUrl = destination.replace('nomadnetwork://', '');
+            }
+            const userConfirmed = confirm("Open HTTP/HTTPS URL in a new browser window?\n\nURL: " + httpUrl);
+            if (userConfirmed) {
+                window.open(httpUrl, '_blank', 'noopener,noreferrer');
+            }
+            return;
+        }
+        
+        navigateToLinkTab(destination);
+    }
+
+    links.forEach(link => {
+        link.addEventListener('click', handleClick);
+    });
+}
+
+// REPLACE your navigateToLinkTab function with this fixed version:
+function navigateToLinkTab(url, addHistory = true) {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    console.log('navigateToLinkTab called with URL:', url);
+    
+    const parsedCurrent = parseNomadNetUrl(tab.currentUrl);
+    if (!parsedCurrent) {
+        alert('Invalid NomadNet URL format. Examples:\n- abcd1234...:/page/index.mu\n- nomadnetwork://abcd1234.../page/index.mu');
+        return;
+    }
+
+    let parsed = parseNomadNetUrl(url);
+    if (!parsed) {
+        // Handle relative URLs (starting with : or /)
+        if (url.startsWith(':')) {
+            // Remove the leading : and construct full URL
+            const relativePath = url.substring(1);
+            const fullUrl = `${parsedCurrent.hash}:${relativePath}`;
+            console.log('Constructed full URL from relative:', fullUrl);
+            parsed = parseNomadNetUrl(fullUrl);
+            url = fullUrl; // Update url variable too
+        } else if (url.startsWith('/')) {
+            // Path starts with /, construct full URL
+            const fullUrl = `${parsedCurrent.hash}:${url}`;
+            console.log('Constructed full URL from path:', fullUrl);
+            parsed = parseNomadNetUrl(fullUrl);
+            url = fullUrl; // Update url variable too
+        } else {
+            // Assume it's a relative path without leading /
+            const fullUrl = `${parsedCurrent.hash}:/${url}`;
+            console.log('Constructed full URL from relative path:', fullUrl);
+            parsed = parseNomadNetUrl(fullUrl);
+            url = fullUrl; // Update url variable too
+        }
+    }
+
+    // Final check
+    if (!parsed) {
+        console.error('Failed to parse URL after all attempts:', url);
+        return;
+    }
+
+    if (addHistory) {
+        tab.addToHistory(url);
+    }
+
+    console.log('Final parsed result:', parsed);
+    console.log('Final URL being used:', url);
+    
+    tab.setUrl(url);
+    fetchPageByUrlTab(parsed.hash, parsed.path, url);
+}
+
+function fetchPageByUrlTab(hash, path, originalUrl) {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    if (tab.currentRequest) {
+        tab.currentRequest.abort();
+        tab.currentRequest = null;
+    }
+    
+    tab.selectedNode = hash;
+    tab.setLoading(true);
+
+
+    const nodeName = tab.knownNodeName || getNodeName(hash);
+    const pageTitle = document.querySelector(`#${tab.id} .page-title`);
+    const pageUrl = document.querySelector(`#${tab.id} .page-url`);
+    const pageContent = document.querySelector(`#${tab.id} .page-content`);
+    const viewToggle = document.querySelector(`#${tab.id} .view-toggle`);
+    const addressBar = document.querySelector(`#${tab.id} .address-bar`);
+    
+    if (pageTitle) {
+        pageTitle.innerHTML = `<span class="label">Loading:</span> <span class="value">${nodeName}</span>`;
+    }
+    const pageDetails = document.querySelector(`#${tab.id} .page-details`);
+    if (pageDetails) {
+        pageDetails.innerHTML = `<span class="label">Page Path:</span> <span class="value">${path}</span> <span class="label">Full Address:</span> <span class="value">${originalUrl}</span>`;
+    }
+    if (pageContent) pageContent.innerHTML = `<div style="color: #58a6ff; text-align: center; padding: 40px; font-size: 16px;">Loading NomadNet page:<br><br><strong>${nodeName}</strong><br><br>Please wait...</div>`;
+    if (viewToggle) viewToggle.style.display = 'none';
+    if (addressBar) addressBar.value = originalUrl;
+    
+    tab.setTitle(`Loading ${nodeName}...`);
+    
+    // Update selected node in sidebar
+    document.querySelectorAll('.node-item').forEach(item => item.classList.remove('selected'));
+    const nodeItem = document.querySelector(`[data-hash="${hash}"]`);
+    if (nodeItem) {
+        nodeItem.classList.add('selected');
+    }
+    
+    const controller = new AbortController();
+    tab.currentRequest = controller;
+
+    console.log('Sending request to server:', `/api/fetch/${hash}?path=${encodeURIComponent(path)}`);
+    console.log('Raw path before encoding:', path);
+
+    fetch(`/api/fetch/${hash}?path=${encodeURIComponent(path)}`, { signal: controller.signal })
+        .then(r => r.json())
+        .then(response => {
+            if (tab.currentRequest === controller) {
+                if (response.status === 'success') {
+                    tab.currentRawContent = response.content;
+                    tab.isRawView = false;
+                    
+                    const renderedHtml = parseMicronContent(response.content);
+                    if (pageContent) pageContent.innerHTML = renderedHtml;
+                    if (pageContent) pageContent.className = 'page-content';
+                    
+                    if (pageTitle) {
+                        pageTitle.innerHTML = `<span class="node-name">${nodeName}</span>`;
+                    }
+                    const pageDetails = document.querySelector(`#${tab.id} .page-details`);
+                    if (pageDetails) {
+                        pageDetails.innerHTML = `<span class="path-info">${path}</span> <span class="label">- Address:</span> <span class="address-info">${originalUrl}</span>`;
+                    }
+                    
+                    if (viewToggle) {
+                        viewToggle.style.display = 'block';
+                        viewToggle.textContent = 'Raw View';
+                    }
+                    
+                    tab.setTitle(nodeName);
+                    addClickHandlersToCurrentTab();
+                    
+                } else {
+                    if (pageContent) pageContent.innerHTML = `<div class="error">Failed to load page: ${escapeHtml(response.error)}<br><br>This could be due to network issues or the node being offline.</div>`;
+                    if (pageTitle) pageTitle.textContent = `Error loading ${originalUrl}`;
+                    if (pageUrl) pageUrl.textContent = '';
+                    if (viewToggle) viewToggle.style.display = 'none';
+                    tab.setTitle('Error');
+                }
+                tab.currentRequest = null;
+                tab.setLoading(false);
+            }
+        })
+        .catch(err => {
+            if (tab.currentRequest === controller && !controller.signal.aborted) {
+                if (pageContent) pageContent.innerHTML = `<div class="error">Network error: ${escapeHtml(err.message)}<br><br>Please check your connection and try again.</div>`;
+                if (pageTitle) pageTitle.textContent = `Error loading ${originalUrl}`;
+                if (pageUrl) pageUrl.textContent = '';
+                if (viewToggle) viewToggle.style.display = 'none';
+                tab.currentRequest = null;
+                tab.setLoading(false);
+                tab.setTitle('Network Error');
+            }
+        });
+}
+
 
         // Get Node Name function
         function getNodeName(hash) {
@@ -206,9 +727,12 @@
 
         function navigateToNomadNetUrl(url) {
             console.log('Link clicked! Navigating to:', url);
-            const addressBar = document.getElementById('address-bar');
-            addressBar.value = url;
-            navigateToUrl();
+            const tab = getActiveTab();
+            if (tab) {
+                const addressBar = document.querySelector(`#${tab.id} .address-bar`);
+                if (addressBar) addressBar.value = url;
+                navigateToUrl();
+            }
         }
 
         function parseNomadNetUrl(url) {
@@ -217,7 +741,7 @@
             // Clean up common URL prefixes
             url = url.replace(/^nomadnetwork:\/\//, '');
             
-            // Match hash and optional path
+            // Match hash and optional path (including parameters after backtick)
             const match = url.match(/^([a-fA-F0-9<>:]{32,})(?:[:\/](.*))?$/);
             if (match) {
                 const cleanHash = match[1].replace(/[<>:]/g, '');
@@ -234,6 +758,7 @@
                 }
                 
                 console.log('Parsed URL - Hash:', cleanHash.substring(0, 16) + '...', 'Path:', path);
+                console.log('Full path including parameters:', path);
                 return { hash: cleanHash, path: path };
             }
             
@@ -242,277 +767,56 @@
         }
 
         function addToHistory(url) {
-            if (url !== currentUrl) {
-                // Remove any forward history when navigating to new page
-                navigationHistory = navigationHistory.slice(0, historyIndex + 1);
-                navigationHistory.push(url);
-                historyIndex = navigationHistory.length - 1;
-                currentUrl = url;
-                updateNavigationButtons();
-                console.log('Added to history:', url);
+            const tab = getActiveTab();
+            if (tab) {
+                tab.addToHistory(url);
             }
         }
 
         function updateNavigationButtons() {
-            const backBtn = document.getElementById('back-btn');
-            const forwardBtn = document.getElementById('forward-btn');
-            
-            backBtn.disabled = historyIndex <= 0;
-            forwardBtn.disabled = historyIndex >= navigationHistory.length - 1;
+            const tab = getActiveTab();
+            if (tab) {
+                tab.updateNavigationButtons();
+            }
         }
 
         function navigateBack() {
-            if (historyIndex > 0) {
-                historyIndex--;
-                const url = navigationHistory[historyIndex];
-                currentUrl = url;
-                document.getElementById('address-bar').value = url;
-                navigateToUrlInternal(url, false);
-                updateNavigationButtons();
-                console.log('Navigated back to:', url);
-            }
+            navigateBackTab();
         }
 
+        // REPLACE your original navigateForward function:
         function navigateForward() {
-            if (historyIndex < navigationHistory.length - 1) {
-                historyIndex++;
-                const url = navigationHistory[historyIndex];
-                currentUrl = url;
-                document.getElementById('address-bar').value = url;
-                navigateToUrlInternal(url, false);
-                updateNavigationButtons();
-                console.log('Navigated forward to:', url);
-            }
+            navigateForwardTab();
         }
 
         function refreshPage() {
-            if (currentUrl) {
-                console.log('Refreshing page:', currentUrl);
-                navigateToUrlInternal(currentUrl, false);
-            }
+            refreshPageTab();
         }
 
         function handleAddressBarEnter(event) {
             if (event.key === 'Enter') {
-                navigateToUrl();
+                navigateToUrlTab();
             }
         }
 
         function navigateToUrl() {
-            const url = document.getElementById('address-bar').value.trim();
-            if (url) {
-                console.log('Manual navigation to:', url);
-                navigateToUrlInternal(url, true);
-            }
+            navigateToUrlTab();
         }
 
         function navigateToUrlInternal(url, addHistory = true) {
-            const parsed = parseNomadNetUrl(url);
-            if (!parsed) {
-                alert('Invalid NomadNet URL format. Examples:\n- abcd1234...:/page/index.mu\n- nomadnetwork://abcd1234.../page/index.mu');
-                return;
-            }
-
-            if (addHistory) {
-                addToHistory(url);
-            }
-
-            console.log('Navigating to parsed URL:', parsed);
-            console.log('🔥 About to call fetchPageByUrl with:', parsed.hash, parsed.path, url);
-            fetchPageByUrl(parsed.hash, parsed.path, url);
+            navigateToUrlInternalTab(url, addHistory);
         }
 
-        // TODO: This only works with static links, it needs to be expanded further for form support and more.
         function navigateToLink(url, addHistory = true) {
-            const parsedCurrent = parseNomadNetUrl(currentUrl);
-            if (!parsedCurrent) {
-                alert('Invalid NomadNet URL format. Examples:\n- abcd1234...:/page/index.mu\n- nomadnetwork://abcd1234.../page/index.mu');
-                return;
-            }
-
-            let parsed = parseNomadNetUrl(url);
-            if (!parsed) {
-                parsed = {
-                    hash: parsedCurrent.hash,
-                    path: url.startsWith(':') ? url.substring(1) : url
-                };
-            }
-
-            if (url.startsWith(':')) {
-                url = parsed.hash + url;
-            }
-
-            if (addHistory) {
-                addToHistory(url);
-            }            
-
-            console.log('Navigating to parsed URL:', parsed);
-            console.log('🔥 About to call fetchPageByUrl with:', parsed.hash, parsed.path, url);
-            fetchPageByUrl(parsed.hash, parsed.path, url);
+            navigateToLinkTab(url, addHistory);
         }
 
         function fetchPageByUrl(hash, path, originalUrl) {
-            if (currentRequest) {
-                console.log('Cancelling previous request');
-                currentRequest.abort();
-                currentRequest = null;
-            }
-            
-            selectedNode = hash;
-            const nodeName = getNodeName(hash);
-            document.getElementById('page-title').innerHTML = `<br>Loading Nomadnet Page: <strong>${nodeName}</strong>...`;
-            document.getElementById('page-url').textContent = '';
-            document.getElementById('page-content').innerHTML = `<div style="color: #58a6ff; text-align: center; padding: 40px; font-size: 16px;">Loading NomadNet page:<br><br><strong>${nodeName}</strong><br><br>Please wait...</div>`;
-            document.getElementById('view-toggle').style.display = 'none';
-            document.getElementById('address-bar').value = originalUrl;
-            
-            // Update selected node in sidebar
-            document.querySelectorAll('.node-item').forEach(item => item.classList.remove('selected'));
-            const nodeItem = document.querySelector(`[data-hash="${hash}"]`);
-            if (nodeItem) {
-                nodeItem.classList.add('selected');
-            }
-            
-            const controller = new AbortController();
-            currentRequest = controller;
-            
-            console.log('Fetching page from API:', `/api/fetch/${hash}?path=${encodeURIComponent(path)}`);
-            
-            fetch(`/api/fetch/${hash}?path=${encodeURIComponent(path)}`, { signal: controller.signal })
-                .then(r => r.json())
-                .then(response => {
-                    if (currentRequest === controller) {
-                        if (response.status === 'success') {
-                            console.log('Page loaded successfully, content length:', response.content.length);
-                            currentRawContent = response.content;
-                            isRawView = false;
-                            
-                            // Parse and render with MicronParser
-                            const renderedHtml = parseMicronContent(response.content);
-                            document.getElementById('page-content').innerHTML = renderedHtml;
-                            document.getElementById('page-content').className = 'page-content';
-                            
-                            const nodeName = getNodeName(hash);
-                            document.getElementById('page-title').innerHTML = `<strong>${nodeName}</strong>  <span style="color: #7d8590; font-size: 12px;"> ${path} </span>`;
-                            document.getElementById('page-url').textContent = originalUrl;
-                            document.getElementById('view-toggle').style.display = 'block';
-                            document.getElementById('view-toggle').textContent = 'Raw View';
-                            
-                            console.log('Page rendered with', isOriginalParser ? 'original' : 'fallback', 'parser');
-                            
-                            // Count links found
-                            const links = document.querySelectorAll('#page-content a')
-                            const linkCount = links.length;
-                            console.log('Found', linkCount, 'links in content');
-
-                            function handleClick(event) {
-                                event.preventDefault(); // Prevent default link behavior
-    
-                                const action = this.getAttribute('data-action');
-                                const destination = this.getAttribute('data-destination');
-                                const fields = this.getAttribute('data-fields');
-    
-                                console.log('Action:', action, 'Destination:', destination, 'Fields:', fields);
-    
-                                // Check if destination contains LXMF address
-                                if (destination && destination.includes('lxmf@')) {
-                                    // Show informational alert for LXMF addresses
-                                    alert("This is an LXMF address, use official LXMF clients to open this link and chat with the peer (MeshChat, Sideband)");
-                                    return;
-                                }
-    
-                                // Check if destination contains HTTP/HTTPS URL
-                                if (destination && (destination.includes('http://') || destination.includes('https://'))) {
-                                    // Extract the actual HTTP URL
-                                    let httpUrl = destination;
-        
-                                    // If it's wrapped in nomadnetwork:// format, extract the inner URL
-                                    if (destination.startsWith('nomadnetwork://')) {
-                                        httpUrl = destination.replace('nomadnetwork://', '');
-                                    }
-        
-                                    // Show confirmation dialog
-                                    const userConfirmed = confirm("Open HTTP/HTTPS URL in a new browser window?\n\nURL: " + httpUrl);
-        
-                                    if (userConfirmed) {
-                                        // Open in new window/tab
-                                        window.open(httpUrl, '_blank', 'noopener,noreferrer');
-                                    }
-                                    // If user clicks "No", just return and do nothing
-                                    return;
-                                }
-    
-                                // For regular NomadNet links, proceed with normal navigation
-                                navigateToLink(destination);
-                            }
-
-                            links.forEach(link => {
-                                link.addEventListener('click', handleClick);
-                            });
-                            
-                        } else {
-                            console.log('Failed to load page:', response.error);
-                            document.getElementById('page-content').innerHTML = `<div class="error">Failed to load page: ${escapeHtml(response.error)}<br><br>This could be due to network issues or the node being offline.</div>`;
-                            document.getElementById('page-title').textContent = `Error loading ${originalUrl}`;
-                            document.getElementById('page-url').textContent = '';
-                            document.getElementById('view-toggle').style.display = 'none';
-                        }
-                        currentRequest = null;
-                    }
-                })
-                .catch(err => {
-                    if (currentRequest === controller && !controller.signal.aborted) {
-                        console.log('Network error:', err.message);
-                        document.getElementById('page-content').innerHTML = `<div class="error">Network error: ${escapeHtml(err.message)}<br><br>Please check your connection and try again.</div>`;
-                        document.getElementById('page-title').textContent = `Error loading ${originalUrl}`;
-                        document.getElementById('page-url').textContent = '';
-                        document.getElementById('view-toggle').style.display = 'none';
-                        currentRequest = null;
-                    }
-                });
+            fetchPageByUrlTab(hash, path, originalUrl);
         }
 
         function toggleView() {
-            const content = document.getElementById('page-content');
-            const toggle = document.getElementById('view-toggle');
-            
-            if (isRawView) {
-                // Switch to rendered view
-                console.log('Switching to rendered view');
-                const renderedHtml = parseMicronContent(currentRawContent);
-                content.innerHTML = renderedHtml;
-                content.className = 'page-content';
-                
-                // Re-add event handlers after switching to rendered view
-                const links = document.querySelectorAll('#page-content a');
-                console.log('Re-adding event handlers to', links.length, 'links');
-                
-                function handleClick() {
-                    const action = this.getAttribute('data-action');
-                    const destination = this.getAttribute('data-destination');
-                    const fields = this.getAttribute('data-fields');
-                    console.log('Action:', action, 'Destination:', destination, 'Fields:', fields);
-                    navigateToLink(destination);
-                }
-
-                links.forEach(link => {
-                    link.addEventListener('click', handleClick);
-                });
-                
-                toggle.textContent = 'Raw View';
-                isRawView = false;
-                
-                // Count links after rendering
-                const linkCount = links.length;
-                console.log('Rendered view shows', linkCount, 'links');
-            } else {
-                // Switch to raw view
-                console.log('Switching to raw view');
-                content.innerHTML = escapeHtml(currentRawContent);
-                content.className = 'page-content raw';
-                toggle.textContent = 'Rendered View';
-                isRawView = true;
-            }
+            toggleViewTab();
         }
 
         function updateNodes() {
@@ -582,10 +886,28 @@
         function browseNode(hash, name) {
             const url = `${hash}:/page/index.mu`;
             console.log('Browsing node:', name, 'URL:', url);
-            document.getElementById('address-bar').value = url;
-            navigateToUrlInternal(url, true);
+            
+            const currentTab = getActiveTab();
+            let targetTab;
+            
+            // Check if current tab is empty (new tab with default content)
+            if (currentTab && currentTab.title === 'New Tab' && !currentTab.currentUrl) {
+                // Use existing empty tab
+                targetTab = currentTab;
+            } else {
+                // Create new tab if current tab has content
+                targetTab = createNewTab();
+            }
+            
+            const addressBar = document.querySelector(`#${targetTab.id} .address-bar`);
+            if (addressBar) addressBar.value = url;
+            
+            // Store the known name in the target tab
+            targetTab.knownNodeName = name;
+            
+            navigateToUrlInternalTab(url, true);
         }
-        
+                
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
@@ -718,11 +1040,68 @@
             }
         }
 
+        document.addEventListener('keydown', (e) => {
+            // Tab navigation with left/right arrows (with Ctrl/Cmd)
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        switchToPreviousTab();
+                        break;
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        switchToNextTab();
+                        break;
+                }
+            }
+            
+            if (e.altKey && !e.ctrlKey && !e.metaKey) {
+                switch (e.key) {
+                    case 'n':
+                        e.preventDefault();
+                        createNewTab();
+                        break;
+                    case 'x':
+                        e.preventDefault();
+                        if (activeTabId && tabs.length > 1) {
+                            closeTab(activeTabId);
+                        }
+                        break;
+                    case 'b':
+                        e.preventDefault();
+                        refreshPageTab();
+                        break;
+                }
+            }
+        });
+
+        // Add these new functions for tab navigation:
+        function switchToPreviousTab() {
+            if (tabs.length <= 1) return;
+            
+            const currentIndex = tabs.findIndex(tab => tab.id === activeTabId);
+            const previousIndex = currentIndex > 0 ? currentIndex - 1 : tabs.length - 1;
+            switchToTab(tabs[previousIndex].id);
+        }
+
+        function switchToNextTab() {
+            if (tabs.length <= 1) return;
+            
+            const currentIndex = tabs.findIndex(tab => tab.id === activeTabId);
+            const nextIndex = currentIndex < tabs.length - 1 ? currentIndex + 1 : 0;
+            switchToTab(tabs[nextIndex].id);
+        }
+
         // Initialize everything when page loads
+        // REPLACE the end of your existing DOMContentLoaded with this:
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('NomadNet Browser starting...');
             await initializeMicronParser();
             loadFavorites();
+            
+            // CREATE FIRST TAB
+            createNewTab();
+            
             // Start regular updates
             setInterval(() => {
                 updateNodes();

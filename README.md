@@ -110,6 +110,8 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **Error Handling**: Robust error handling for network issues and timeouts
 - ✅ **Complete Local Usage**: incorporated scripts, css and js without external call to any CDN's
 - ✅ **Bookmark System**: Save frequently visited nodes and pages (Favorites Nodes Bar)
+- ✅ **MultiTab Navigation**: Open multiple links in new browser tabs
+- ✅ **Navigation Shortcuts**: Keyboards shortcuts for tab navigation / new / close / reload page
 
 ## Next Implementations:
 ### The following features are planned for the next version:
@@ -117,9 +119,7 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✖️ **File Download**: download files hosted on nomadnet, coming soon!
 - ✖️ **Form and input boxes**: sending user input in nomad pages, work in progress!
 - ✖️ **Fingerprint**: Send identity and lxmf address to the host node, coming soon!
-- ✖️ **New Tab/Window**: Option to open links in new browser tabs
-- ✖️ **Loading Indicators**: Progress bars for page loading
-- ✖️ **Search Functionality**: Search within page content and across nodes
+- ✖️ **Loading Indicators**: Progress bars for page loading (optional)
 
 -----
 

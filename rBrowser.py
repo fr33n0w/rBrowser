@@ -274,17 +274,14 @@ def serve_micron_parser():
         print(f"❌ Error serving micron parser: {e}")
         return f"console.error('Error loading micron parser: {str(e)}');", 500
 
+@app.route('/favicon.svg')
+def favicon():
+    return '', 204  # No content response
+
 def main():
     print("=" * 70)
-    print("🚀 NomadNet Browser v3.0 - Enhanced with URL Navigation")
-    print("=" * 70)
-    print("✅ Separated HTML/Python architecture")
-    print("✅ Original RFnexus Micron Parser integration")
-    print("✅ Real-time node discovery")
-    print("✅ Raw/Rendered view toggle")
-    print("✅ URL Navigation bar with back/forward")
-    print("✅ Clickable links in Micron content")
-    print("✅ Manual URL input support")
+    print("🌐 rBrowser v1.0 - Standalone Nomadnet Browser")
+    print("https://github.com/fr33n0w/rBrowser")
     print("=" * 70)
     
     # Check file structure
@@ -293,7 +290,7 @@ def main():
         print(f"✅ Found HTML template: {template_path}")
     else:
         print(f"❌ HTML template not found: {template_path}")
-        print("   Please create the templates/ directory and index.html file")
+        print("   Please verify templates/ directory and index.html file")
         return
     
     micron_path = os.path.join('script', 'micron-parser_original.js')
@@ -309,11 +306,6 @@ def main():
     print("\n🌐 Starting Flask server on http://localhost:5000")
     print("📡 Listening for NomadNetwork announces...")
     print("🔍 Open your browser to http://localhost:5000")
-    print("\n📚 URL Format Examples:")
-    print("   hash:/page/index.mu")
-    print("   hash:/page/about.mu")  
-    print("   hash:/social/posts.mu")
-    print("   nomadnetwork://hash/page/index.mu")
     print("\nPress Ctrl+C to stop")
     
     try:
