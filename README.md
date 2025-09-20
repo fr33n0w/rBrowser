@@ -113,7 +113,7 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **Bookmark System**: Save frequently visited nodes and pages (Favorites Nodes Bar)
 - ✅ **MultiTab Navigation**: Open multiple links in new browser tabs
 - ✅ **Navigation Shortcuts**: Keyboards shortcuts for tab navigation / new / close / reload page
-- ✅ **Web UI**: Implemented waitress (win) and gunicorn (linux) production ready web servers, fallback to flask if missing others.
+- ✅ **Web UI**: Implemented waitress and gunicorn production ready web servers, fallback to flask if missing.
 - ✅ **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
 
 ## Next Implementations:
