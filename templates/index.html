@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>rBrowser v1.0 - NomadNet Nodes Standalone Page Browser</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="style.css">
@@ -81,7 +83,7 @@
 
         <div class="shortcuts-bar">
             <span class="shortcut-item">
-                Browser Shortcuts: <kbd>Alt + N</kbd> Open New Tab
+                Shortcuts: <kbd>Alt + N</kbd> Open New Tab
             </span>
             <span class="shortcut-item">
                 <kbd>Alt + X</kbd> Close Current Tab
@@ -90,10 +92,13 @@
                 <kbd>Alt + B</kbd> Reload Current Page
             </span>
             <span class="shortcut-item">
-                <kbd>Ctrl + ← or →</kbd> Switch Tabs Left or Right
+                <kbd>Ctrl + Left or Right arrows</kbd> Switch Tabs
             </span>
             <span class="shortcut-item">
                 <kbd>Ctrl + X</kbd> Close all other tabs
+            </span>
+                        <span class="shortcut-item">
+                <kbd>Up or Down arrows</kbd> Scroll page
             </span>
         </div>
 
@@ -416,10 +421,25 @@ function addClickHandlersToCurrentTab() {
     
     function handleClick(event) {
         event.preventDefault();
+        const href = this.getAttribute('href');
         const action = this.getAttribute('data-action');
         const destination = this.getAttribute('data-destination');
         const fields = this.getAttribute('data-fields');
         
+        console.log('Link clicked, href:', href, 'destination:', destination); // DEBUG
+        
+        // Check if it's a file download link - CHECK destination first (primary), then href
+        if ((destination && destination.includes(':/file/')) || (href && href.includes(':/file/'))) {
+            console.log('Detected file link, calling handleFileClick'); // DEBUG
+            // Use destination as primary, href as fallback
+            const fileUrl = destination || href;
+            // Temporarily set href so handleFileClick can read it
+            this.setAttribute('href', fileUrl);
+            handleFileClick.call(this, event);
+            return;
+        }
+        
+        // Handle other link types (your existing code)
         if (destination && destination.includes('lxmf@')) {
             alert("This is an LXMF address, use official LXMF clients to open this link and chat with the peer (MeshChat, Sideband)");
             return;
@@ -437,12 +457,19 @@ function addClickHandlersToCurrentTab() {
             return;
         }
         
-        navigateToLinkTab(destination);
+        // Navigate to nomadnet link
+        const urlToNavigate = destination || href;
+        if (urlToNavigate) {
+            navigateToLinkTab(urlToNavigate);
+        }
     }
 
     links.forEach(link => {
         link.addEventListener('click', handleClick);
     });
+    
+    // Also call the file download handler setup
+    addFileDownloadHandlers();
 }
 
 // REPLACE your navigateToLinkTab function with this fixed version:
@@ -917,7 +944,136 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function handleFileDownload(nodeHash, filePath) {
+            const downloadUrl = `/api/download/${nodeHash}?path=${encodeURIComponent(filePath)}`;
+            const filename = filePath.split('/').pop();
+            
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed; bottom: 60px; right: 60px; z-index: 10000;
+                background: #1a1a1a; border: 3px solid #333333; color: #ffffff;
+                padding: 16px 20px; border-radius: 0px; font-size: 14px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.5); min-width: 280px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            `;
+            notification.innerHTML = `📁 Downloading ${filename}...<small>Please wait...</small>`;
+            document.body.appendChild(notification);
+            
+            // Use fetch for better control
+            fetch(downloadUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('Download failed');
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Update notification
+                    notification.style.borderColor = '#1a1a1a';
+                    notification.style.color = '#ffffff';
+                    notification.innerHTML = `✅ Download of ${filename} completed!`;
+                    
+                    // Create download link
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                    
+                    // Remove notification after delay
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 3000);
+                })
+                .catch(error => {
+                    // Show error
+                    notification.style.borderColor = '##1a1a1a';
+                    notification.style.color = '#ff7b72';
+                    notification.innerHTML = `❌ Download failed<br><small>${error.message}</small>`;
+                    
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 5000);
+                });
+        }
+
+    // Parse nomadnet:// URLs and convert to download links
+    function parseFileURL(url) {
         
+        let nodeHash = '';
+        let filePath = '';
+        
+        if (url.startsWith('nomadnetwork://')) {
+            const parts = url.replace('nomadnetwork://', '').split(':');
+            nodeHash = parts[0] || '';
+            filePath = parts.slice(1).join(':');
+        } else if (url.includes(':/file/')) {
+            const parts = url.split(':');
+            nodeHash = parts[0];
+            filePath = parts.slice(1).join(':');
+        }
+        
+        return { nodeHash, filePath };
+    }
+
+    // Add click handlers for file links in the rendered content
+    function addFileDownloadHandlers() {
+        const tab = getActiveTab();
+        if (!tab) return;
+        
+        // Look for file links in the current tab's content
+        const fileLinks = document.querySelectorAll(`#${tab.id} .page-content a[href*=":/file/"]`);
+        
+        fileLinks.forEach(link => {
+            // Remove any existing click handlers
+            link.removeEventListener('click', handleFileClick);
+            // Add new click handler
+            link.addEventListener('click', handleFileClick);
+        });
+    }
+
+    function handleFileClick(event) {
+        event.preventDefault();
+        const href = this.getAttribute('href');
+        const tab = getActiveTab();
+        
+        if (!tab) return;
+        
+        // Parse the file URL
+        const parsed = parseFileURL(href);
+        let nodeHash = parsed.nodeHash;
+        let filePath = parsed.filePath;
+        
+        // If no node hash in the URL, use current tab's node
+        if (!nodeHash && tab.selectedNode) {
+            nodeHash = tab.selectedNode;
+        }
+        
+        // If still no node hash, try to extract from current URL
+        if (!nodeHash && tab.currentUrl) {
+            const currentParsed = parseNomadNetUrl(tab.currentUrl);
+            if (currentParsed) {
+                nodeHash = currentParsed.hash;
+            }
+        }
+        
+        if (nodeHash && filePath) {
+            console.log(`File link clicked: ${filePath} from ${nodeHash.substring(0, 16)}...`);
+            handleFileDownload(nodeHash, filePath);
+        } else {
+            console.warn('Could not parse file URL:', href);
+            alert('Unable to download file - invalid URL format');
+        }
+    }
+
         function filterNodes() {
             const searchTerm = document.getElementById('node-search').value.toLowerCase();
             const nodeItems = document.querySelectorAll('.node-item');

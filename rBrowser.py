@@ -5,7 +5,9 @@ import sys
 import time
 import threading
 from datetime import datetime
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response, send_file
+import mimetypes
+import io
 import RNS
 import RNS.vendor.umsgpack as msgpack
 import secrets
@@ -18,7 +20,7 @@ class NomadNetBrowser:
         self.main_browser = main_browser
         clean_hash = destination_hash.replace("<", "").replace(">", "").replace(":", "")
         self.destination_hash = bytes.fromhex(clean_hash)
-        
+
     def fetch_page(self, page_path="/page/index.mu", timeout=30):
         try:
             print(f"🔍 Checking path to {RNS.prettyhexrep(self.destination_hash)[:16]}...")
@@ -96,6 +98,125 @@ class NomadNetBrowser:
         self.result["data"] = "Request failed"
         self.result["received"] = True
         self.response_event.set()
+
+class NomadNetFileBrowser:
+    def __init__(self, main_browser, destination_hash):
+        self.main_browser = main_browser
+        clean_hash = destination_hash.replace("<", "").replace(">", "").replace(":", "")
+        self.destination_hash = bytes.fromhex(clean_hash)
+        
+    def fetch_file(self, file_path, timeout=60):  # Longer timeout for files
+        try:
+            print(f"🔍 Checking path to {RNS.prettyhexrep(self.destination_hash)[:16]} for file...")
+            
+            if not RNS.Transport.has_path(self.destination_hash):
+                print(f"📡 Requesting path to {RNS.prettyhexrep(self.destination_hash)[:16]}...")
+                RNS.Transport.request_path(self.destination_hash)
+                start_time = time.time()
+                while not RNS.Transport.has_path(self.destination_hash):
+                    if time.time() - start_time > 30:
+                        return {"error": "No path", "content": b"", "status": "error"}
+                    time.sleep(0.1)
+            
+            print(f"✅ Path found, establishing connection for file transfer...")
+            identity = RNS.Identity.recall(self.destination_hash)
+            if not identity:
+                return {"error": "No identity", "content": b"", "status": "error"}
+            
+            self.destination = RNS.Destination(identity, RNS.Destination.OUT, RNS.Destination.SINGLE, "nomadnetwork", "node")
+            self.link = RNS.Link(self.destination)
+            self.result = {"data": None, "received": False}
+            self.response_event = threading.Event()
+            self.file_path = file_path
+            
+            print(f"📁 Requesting file: {file_path}")
+            self.link.set_link_established_callback(self._on_link_established)
+            success = self.response_event.wait(timeout=timeout)
+            
+            if success and self.result["received"]:
+                return {"content": self.result["data"] or b"", "status": "success", "error": None}
+            else:
+                return {"error": "Timeout", "content": b"", "status": "error"}
+                
+        except Exception as e:
+            print(f"❌ Exception during file fetch: {str(e)}")
+            return {"error": str(e), "content": b"", "status": "error"}
+    
+    def _on_link_established(self, link):
+        try:
+            print(f"🔗 Link established, requesting file: {self.file_path}")
+            link.request(self.file_path, data=None, response_callback=self._on_response, failed_callback=self._on_request_failed)
+        except Exception as e:
+            print(f"❌ File request error: {str(e)}")
+            self.result["data"] = b""
+            self.result["received"] = True
+            self.response_event.set()
+    
+    def _on_response(self, receipt):
+        try:
+            if receipt.response:
+                data = receipt.response
+                print(f"📁 Received response type: {type(data)}")
+                print(f"📁 Response repr: {repr(data)}")
+                
+                if isinstance(data, bytes):
+                    self.result["data"] = data
+                    print(f"✅ Received file data: {len(data)} bytes")
+                elif isinstance(data, str):
+                    self.result["data"] = data.encode('utf-8')
+                    print(f"✅ Received text file: {len(data)} characters")
+                elif hasattr(data, 'read'):
+                    # Handle file objects (_io.BufferedReader, etc.)
+                    try:
+                        print(f"📁 Reading file object: {data}")
+                        
+                        # Try to seek to beginning
+                        if hasattr(data, 'seek'):
+                            data.seek(0)
+                            print(f"📁 Seeked to beginning")
+                        
+                        # Read the file content
+                        file_content = data.read()
+                        print(f"📁 Read {len(file_content)} bytes from file object")
+                        
+                        # Ensure we have bytes
+                        if isinstance(file_content, bytes):
+                            self.result["data"] = file_content
+                        else:
+                            self.result["data"] = str(file_content).encode('utf-8')
+                        
+                        print(f"✅ Successfully read file: {len(self.result['data'])} bytes")
+                        
+                        # Close the file if possible
+                        if hasattr(data, 'close'):
+                            data.close()
+                            print(f"📁 Closed file object")
+                            
+                    except Exception as read_error:
+                        print(f"❌ Error reading file object: {read_error}")
+                        print(f"📁 File object details: {dir(data)}")
+                        self.result["data"] = b""
+                else:
+                    print(f"❌ Unknown data type: {type(data)}")
+                    self.result["data"] = b""
+            else:
+                self.result["data"] = b""
+                print("⚠️ Empty file response received")
+                
+            self.result["received"] = True
+            self.response_event.set()
+        except Exception as e:
+            print(f"❌ File response processing error: {str(e)}")
+            self.result["data"] = b""
+            self.result["received"] = True
+            self.response_event.set()
+
+    def _on_request_failed(self, receipt):
+        print("❌ File request failed")
+        self.result["data"] = b""
+        self.result["received"] = True
+        self.response_event.set()
+
 
 class NomadNetAnnounceHandler:
     def __init__(self, browser):
@@ -187,6 +308,18 @@ class NomadNetWebBrowser:
         
         return list(self.nomadnet_nodes.values())
     
+    def fetch_file(self, node_hash, file_path):
+        """Fetch a file from a NomadNet node"""
+        try:
+            print(f"📁 NomadNetWebBrowser.fetch_file called: {file_path} from {node_hash[:16]}...")
+            print(f"📁 Creating NomadNetFileBrowser instance...")
+            browser = NomadNetFileBrowser(self, node_hash)
+            response = browser.fetch_file(file_path)
+            return response
+        except Exception as e:
+            print(f"❌ File fetch failed: {str(e)}")
+            return {"error": f"File fetch failed: {str(e)}", "content": b"", "status": "error"}
+                
     def fetch_page(self, node_hash, page_path="/page/index.mu"):
         try:
             print(f"🌐 Fetching {page_path} from {node_hash[:16]}...")
@@ -196,7 +329,7 @@ class NomadNetWebBrowser:
         except Exception as e:
             print(f"❌ Fetch failed: {str(e)}")
             return {"error": f"Fetch failed: {str(e)}", "content": "", "status": "error"}
-    
+            
     def start_monitoring(self):
         self.running = True
         print("Started NomadNet announce monitoring")
@@ -271,6 +404,60 @@ def serve_micron_parser():
     except Exception as e:
         print(f"❌ Error serving micron parser: {e}")
         return f"console.error('Error loading micron parser: {str(e)}');", 500
+    
+@app.route('/api/download/<node_hash>')
+def api_download_file(node_hash):
+    """Download a file from a NomadNet node"""
+    file_path = request.args.get('path', '/file/')
+    
+    if not file_path.startswith('/file/'):
+        return jsonify({"error": "Invalid file path"}), 400
+    
+    print(f"📁 Download Request: {file_path} from {node_hash[:16]}...")
+    
+    try:
+        # Fetch the file using the browser
+        response = browser.fetch_file(node_hash, file_path)
+        
+        if response["status"] == "error":
+            print(f"❌ Download failed: {response.get('error', 'Unknown error')}")
+            return jsonify(response), 404
+        
+        # Get file content and metadata
+        file_data = response["content"]
+        filename = file_path.split('/')[-1] or "download"
+        
+        # Ensure file_data is bytes
+        if isinstance(file_data, str):
+            file_data = file_data.encode('utf-8')
+        elif not isinstance(file_data, bytes):
+            file_data = str(file_data).encode('utf-8')
+        
+        # Check if we actually got data
+        if not file_data:
+            print(f"❌ No file data received")
+            return jsonify({"error": "No file data received"}), 404
+            
+        # Determine MIME type
+        mime_type, _ = mimetypes.guess_type(filename)
+        if not mime_type:
+            mime_type = 'application/octet-stream'
+        
+        print(f"✅ Serving file: {filename} ({len(file_data)} bytes, {mime_type})")
+        
+        # Create file-like object from bytes
+        file_obj = io.BytesIO(file_data)
+        
+        return send_file(
+            file_obj,
+            mimetype=mime_type,
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        print(f"❌ Download exception: {str(e)}")
+        return jsonify({"error": f"Download failed: {str(e)}"}), 500
 
 @app.route('/favicon.svg')
 def favicon():

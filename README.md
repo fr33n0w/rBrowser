@@ -114,14 +114,13 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **MultiTab Navigation**: Open multiple links in new browser tabs
 - ✅ **Navigation Shortcuts**: Keyboards shortcuts for tab navigation / new / close / reload page
 - ✅ **Web UI**: Implemented waitress (win) and gunicorn (linux) production ready web servers, fallback to flask if missing others.
+- ✅ **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
 
 ## Next Implementations:
 ### The following features are planned for the next version:
 
-- ✖️ **File Download**: download files hosted on nomadnet, coming soon!
 - ✖️ **Form and input boxes**: sending user input in nomad pages, work in progress!
 - ✖️ **Fingerprint**: Send identity and lxmf address to the host node, coming soon!
-- ✖️ **Loading Indicators**: Progress bars for page loading (optional)
 
 -----
 
