@@ -113,6 +113,7 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **Bookmark System**: Save frequently visited nodes and pages (Favorites Nodes Bar)
 - ✅ **MultiTab Navigation**: Open multiple links in new browser tabs
 - ✅ **Navigation Shortcuts**: Keyboards shortcuts for tab navigation / new / close / reload page
+- ✅ **Web UI**: Implemented waitress (win) and gunicorn (linux) production ready web servers, fallback to flask if missing others.
 
 ## Next Implementations:
 ### The following features are planned for the next version:
@@ -160,9 +161,18 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## External dependencies:
 
-This project includes micronparser.js and DOMPurify.min.js in local folders to avoid external url calls.
+This project includes local versions of:
 
-This software and all their rights are owned by the respective developers. 
+- micronparser.js for NomadNet pages rendering 
+- DOMPurify.min.js for html security
+
+The Web UI is served by:
+- Flask (developer web server)
+- waitress (Production web server for windows)
+- gunicorn (Production web server for linux) 
+
+
+External software and all their rights are owned by the respective developers. 
 
 -----
 

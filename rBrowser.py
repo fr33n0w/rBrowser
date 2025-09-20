@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-"""
-NomadNet Browser - Enhanced version with URL navigation support
-"""
 
 import os
 import sys
@@ -11,9 +8,10 @@ from datetime import datetime
 from flask import Flask, render_template, jsonify, request, send_from_directory
 import RNS
 import RNS.vendor.umsgpack as msgpack
+import secrets
 
 app = Flask(__name__)
-app.secret_key = 'nomadnet_web_browser_key'
+app.secret_key = secrets.token_hex(16) # needed for flask sessions
 
 class NomadNetBrowser:
     def __init__(self, main_browser, destination_hash):
@@ -278,6 +276,53 @@ def serve_micron_parser():
 def favicon():
     return '', 204  # No content response
 
+
+def start_server():
+    """Automatically choose the best server available"""
+    import platform
+    
+    # Try Waitress first on Windows
+    if platform.system() == "Windows":
+        try:
+            from waitress import serve
+            print("🚀 Starting with Waitress (Windows optimized)...")
+            print("📡 Access logs disabled for cleaner output")
+            serve(app, host='0.0.0.0', port=5000, threads=4)
+            return
+        except ImportError:
+            pass
+    
+    # Try Gunicorn on Unix/Linux
+    try:
+        import gunicorn.app.wsgiapp as wsgi
+        # Configure gunicorn to suppress access logs
+        sys.argv = [
+            'gunicorn',
+            '--bind', '0.0.0.0:5000',
+            '--workers', '4',
+            '--access-logfile', '/dev/null',  # Disable access logs
+            '--error-logfile', '-',           # Errors to stderr
+            '--log-level', 'warning',         # Only warnings and errors
+            f'{os.path.basename(__file__).split(".")[0]}:app'
+        ]
+        print("🚀 Starting with Gunicorn for optimal performance...")
+        print("📡 Access logs disabled for cleaner output")
+        wsgi.run()
+        return
+    except ImportError:
+        pass
+    
+    # Fallback to Flask development server
+    system_name = platform.system()
+    if system_name == "Windows":
+        print("⚠️  Waitress not found - using Flask development server")
+        print("   For better performance on Windows: pip install waitress")
+    else:
+        print("⚠️  Gunicorn not found - using Flask development server")
+        print("   For better performance: pip install gunicorn")
+    
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+
 def main():
     print("=" * 70)
     print("🌐 rBrowser v1.0 - Standalone Nomadnet Browser")
@@ -303,13 +348,13 @@ def main():
     # Start announce monitoring
     browser.start_monitoring()
     
-    print("\n🌐 Starting Flask server on http://localhost:5000")
+    print("\n🌐 Starting local web server on http://localhost:5000")
     print("📡 Listening for NomadNetwork announces...")
     print("🔍 Open your browser to http://localhost:5000")
     print("\nPress Ctrl+C to stop")
     
     try:
-        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+        start_server()
     except KeyboardInterrupt:
         print("\n👋 NomadNet Browser shutting down...")
         browser.running = False
