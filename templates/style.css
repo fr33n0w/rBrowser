@@ -86,7 +86,6 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 
 .node-list { 
     padding: 6px; 
-    /* Remove any padding-top here */
 }
         
 /* Compact node items - MADE CLICKABLE */
@@ -103,20 +102,23 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 .browse-btn:hover { background: #1f6feb; }
         
 
-.status-bar { 
-    background: #0d1117; 
-    padding: 4px 8px; 
-    border-top: 1px solid #30363d; 
-    font-size: 12px; 
-    color: #7d8590; 
-    flex-shrink: 0; 
-    font-weight: bold;
-    height: 38px;
-    min-height: 38px;
-    max-height: 38px;
-    overflow: hidden;
-    line-height: 1.1;
+.status-bar {
+    position: absolute !important;
+    bottom: 30px !important; /* Raise it by the height of shortcuts bar */
+    left: 0 !important;
+    right: 0 !important;
+    padding: 4px 8px !important;
+    margin: 0 !important;
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    box-sizing: border-box !important;
+    background: #21262d;
+    border-top: 1px solid #30363d;
 }
+
 .status-bar .online { color: #3fb950; font-weight: bold; }
 .status-bar .count { color: #58a6ff; font-weight: bold; }
         
@@ -131,6 +133,7 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     max-width: calc(100vw - 320px);
     height: 100vh;
     overflow: hidden;
+    padding-bottom: 30px;
 }
         
 /* Fixed Navigation Bar */
@@ -419,7 +422,7 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    height: calc(100vh - 48px - 30px); 
+    height: calc(100vh - 120px);
 }
 
 .tab-content {
@@ -469,48 +472,33 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 }
 
 .shortcuts-bar {
-    background: #161b22;
-    border-top: 1px solid #30363d;
-    padding: 0px 14px;
+    position: fixed;
+    bottom: 0;
+    left: 50 !important;
+    right: 0;
+    background: #21262d;
+    border-top: 1px solid #4f545a;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #a3afbe;
+    z-index: 1000;
     display: flex;
-    gap: 14px;
-    font-size: 14px;
-    color: #7d8590;
-    height: 25px;
-    min-height: 25px;
-    max-height: 25px;
-    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
     justify-content: center;
-    flex-shrink: 0;
 }
 
 .shortcut-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
     white-space: nowrap;
-    line-height: 1;
-    vertical-align: middle;
-    margin: 0;
-    padding: 0;
 }
 
 .shortcut-item kbd {
-    background: #21262d;
-    border: 1px solid #30363d;
+    background: #30363d;
+    border: 1px solid #5b6068;
     border-radius: 3px;
-    padding: 0px 6px;
+    padding: 1px 4px;
     font-size: 11px;
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
-    color: #e6edf3;
-    font-weight: 600;
-    min-width: fit-content;
-    display: inline-flex;
-    align-items: center;
-    line-height: 1;
-    vertical-align: middle;
-    margin: 0;
-    box-sizing: border-box;
+    font-family: monospace;
 }
 
 
@@ -522,3 +510,19 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 .welcome { text-align: center; padding: 60px 40px; color: #7d8590; }
 .welcome h2 { color: #f0f6fc; font-size: 28px; font-weight: 700; margin-bottom: 16px; }
 .welcome p { font-size: 16px; line-height: 1.6; max-width: 500px; margin: 0 auto; }
+
+.online, .waiting, .connerror {
+    font-weight: bold;
+}
+
+.online {
+    color: #40ed3a;
+}
+
+.waiting {
+    color: #f59e0b;
+}
+
+.connerror {
+    color: #ef4444;
+}

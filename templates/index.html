@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>rBrowser v1.0 - NomadNet Nodes Standalone Page Browser</title>
+    <title>rBrowser v1.0 - Standalone NomadNet Page Browser</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -19,7 +19,10 @@
             <div class="favorites-section" id="favorites-section" style="background: #21262d; border-bottom: 1px solid #30363d; padding: 8px; flex-shrink: 0; z-index: 100; position: relative;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="color: #ffa657; font-size: 12px; font-weight: bold;">⭐ Favorites</span>
-                    <button id="favorites-toggle" onclick="toggleFavoritesSection()" style="background: none; border: none; color: #7d8590; cursor: pointer; font-size: 10px;">Hide</button>
+                    <div style="display: flex; gap: 4px;">
+                        <button id="add-favorite-btn" onclick="showAddFavoriteDialog()" style="background: none; border: none; color: #58a6ff; cursor: pointer; font-size: 10px;">+ Add</button>
+                        <button id="favorites-toggle" onclick="toggleFavoritesSection()" style="background: none; border: none; color: #ebf4ff; cursor: pointer; font-size: 10px;">Hide</button>
+                    </div>
                 </div>
                 <div class="favorites-list" id="favorites-list" style="background: #161b22; padding: 4px; border-radius: 4px; min-height: 20px;">
                     <div style="text-align: center; color: #7d8590; font-size: 11px; padding: 8px;">No favorites yet</div>
@@ -27,24 +30,21 @@
             </div>
             <div class="node-list-container" style="position: absolute !important; top: 50px !important; bottom: 38px !important; left: 0 !important; right: 0 !important; overflow-y: auto !important;">
                 <div class="node-list" id="node-list">
-                    <div style="text-align: center; padding: 20px; color: #7d8590; font-size: 12px;">Scanning for nodes...</div>
+                    <div style="text-align: center; padding: 20px; color: #d2d7df; font-size: 12px;">Scanning for nodes...</div>
                 </div>
             </div>
             <div class="status-bar" style="position: absolute !important; bottom: 0 !important; left: 0 !important; right: 0 !important; padding: 4px 8px !important; margin: 0 !important; font-size: 12px !important; line-height: 1.1 !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important; box-sizing: border-box !important;">
-                Status:<span class="online"><strong> ● Online.  Reticulum Connected!</strong></span><br>
+                Status:<span class="status-indicator" id="connection-status"><strong> ● Initializing...</strong></span><br>
                 Total Announces: <span class="count" id="announce-count">0</span> - NomadNet Nodes: <span class="count" id="node-count">0</span>                
             </div>
         </div>
             <div class="content">
-            <!-- NEW: Tab bar section -->
             <div class="tab-bar">
                 <div class="tabs-container" id="tabs-container">
                     <!-- Tabs will be dynamically created here -->
                 </div>
                 <button class="new-tab-btn" onclick="createNewTab()">+ New Tab</button>
             </div>
-            
-            <!-- MODIFIED: Tab content wrapper (replaces your existing nav-bar, header, browser-area) -->
             <div class="tab-content-wrapper" id="tab-content-wrapper">
                 <!-- Each tab will have its own content area -->
             </div>
@@ -59,6 +59,7 @@
                 <button class="nav-btn back-btn" onclick="navigateBack()" disabled>←</button>
                 <button class="nav-btn forward-btn" onclick="navigateForward()" disabled>→</button>
                 <button class="nav-btn" onclick="refreshPage()">⟳</button>
+                <button class="nav-btn home-btn" onclick="navigateHome()" title="Go to home page">🏠</button>
             </div>
             <input type="text" class="address-bar" id="address-bar" placeholder="Enter NomadNet URL (hash:/path/to/page.mu)" onkeypress="handleAddressBarEnter(event)">
             <button class="go-btn" onclick="navigateToUrl()">Go</button>
@@ -83,13 +84,17 @@
 
         <div class="shortcuts-bar">
             <span class="shortcut-item">
-                Shortcuts: <kbd>Alt + N</kbd> Open New Tab
+                <kbd>Alt + N</kbd> Open New Tab
             </span>
             <span class="shortcut-item">
                 <kbd>Alt + X</kbd> Close Current Tab
             </span>
             <span class="shortcut-item">
                 <kbd>Alt + B</kbd> Reload Current Page
+            </span>
+            </span>
+            <span class="shortcut-item">
+                <kbd>Alt + F</kbd> Add current page to favorites
             </span>
             <span class="shortcut-item">
                 <kbd>Ctrl + Left or Right arrows</kbd> Switch Tabs
@@ -123,6 +128,11 @@
         let tabs = [];
         let activeTabId = null;
         let tabCounter = 0;
+        let lastStatusFetch = 0;
+        let statusFetchFailures = 0;
+        let maxStatusFailures = 3; // Allow 3 failures before marking as connection error
+        let lastNodesHash = '';
+
 
 // Tab class to manage individual tab state
 class BrowserTab {
@@ -196,8 +206,7 @@ class BrowserTab {
     
 }
 
-
-// NEW TAB MANAGEMENT FUNCTIONS
+// TAB MANAGEMENT FUNCTIONS
 function createNewTab() {
     const tabId = `tab-${++tabCounter}`;
     const tab = new BrowserTab(tabId);
@@ -242,6 +251,7 @@ function createTabContent(tab) {
     const backBtn = content.querySelector('.back-btn');
     const forwardBtn = content.querySelector('.forward-btn');
     const refreshBtn = content.querySelector('.refresh-btn');
+    const homeBtn = content.querySelector('.home-btn');
     const goBtn = content.querySelector('.go-btn');
     const addressBar = content.querySelector('.address-bar');
     const viewToggle = content.querySelector('.view-toggle');
@@ -249,6 +259,7 @@ function createTabContent(tab) {
     if (backBtn) backBtn.onclick = () => navigateBackTab();
     if (forwardBtn) forwardBtn.onclick = () => navigateForwardTab();
     if (refreshBtn) refreshBtn.onclick = () => refreshPageTab();
+    if (homeBtn) homeBtn.onclick = () => navigateHome();  // Add this line
     if (goBtn) goBtn.onclick = () => navigateToUrlTab();
     if (addressBar) addressBar.onkeypress = (e) => handleAddressBarEnterTab(e);
     if (viewToggle) viewToggle.onclick = () => toggleViewTab();
@@ -276,6 +287,9 @@ function switchToTab(tabId) {
         if (activeTab) {
             activeTab.updateAddressBar();
             activeTab.updateNavigationButtons();
+            
+            // IMMEDIATELY UPDATE NODE SELECTION
+            updateNodeSelection();
         }
     }
 }
@@ -311,7 +325,100 @@ function getActiveTab() {
     return tabs.find(t => t.id === activeTabId);
 }
 
-// MODIFIED VERSIONS OF YOUR EXISTING FUNCTIONS FOR TABS
+function showAddFavoriteDialog() {
+    const input = prompt("Enter NomadNet address (hash:/path/to/page.mu or just hash for node):");
+    if (!input) return;
+    
+    // Try to extract hash and name
+    let hash, name;
+    
+    if (input.includes(':')) {
+        // Full URL format
+        const parsed = parseNomadNetUrl(input);
+        if (parsed) {
+            hash = parsed.hash;
+            name = prompt("Enter a name for this favorite:", `Custom Node (${hash.substring(0, 8)}...)`);
+        } else {
+            showNotification(
+                "Invalid URL format. Please use: hash:/path or just hash",
+                'error',
+                5000
+            );
+            return;
+        }
+    } else if (input.match(/^[a-fA-F0-9]{32}$/)) {
+        // Just a hash
+        hash = input;
+        name = prompt("Enter a name for this favorite:", `Custom Node (${hash.substring(0, 8)}...)`);
+    } else {
+        showNotification(
+            "Invalid format. Please enter a 32-character hash or full NomadNet URL",
+            'error',
+            5000
+        );
+        return;
+    }
+
+    if (!name) return;
+
+    // Check if already exists
+    if (favoriteNodes.some(fav => fav.hash === hash)) {
+        showNotification(
+            "This node is already in your favorites",
+            'warning',
+            4000
+        );
+        return;
+    }
+    
+    // Add to favorites
+    favoriteNodes.push({ hash: hash, name: name });
+    saveFavorites();
+    updateFavoritesDisplay();
+    updateNodes(); // Refresh to update star icons
+
+}
+
+function addFavoriteFromUrl() {
+    const tab = getActiveTab();
+    if (!tab || !tab.currentUrl) {
+        showNotification(
+            "No current page to add to favorites",
+            'warning',
+            4000
+        );
+        return;
+    }
+   
+    const parsed = parseNomadNetUrl(tab.currentUrl);
+    if (!parsed) {
+        showNotification(
+            "Cannot parse current URL",
+            'error',
+            4000
+        );
+        return;
+    }
+   
+    const name = prompt("Enter a name for this favorite:", tab.knownNodeName || `Node (${parsed.hash.substring(0, 8)}...)`);
+    if (!name) return;
+   
+    if (favoriteNodes.some(fav => fav.hash === parsed.hash)) {
+        showNotification(
+            "This node is already in your favorites",
+            'warning',
+            4000
+        );
+        return;
+    }
+    
+    favoriteNodes.push({ hash: parsed.hash, name: name });
+    saveFavorites();
+    updateFavoritesDisplay();
+    updateNodes();
+
+}
+
 function navigateBackTab() {
     const tab = getActiveTab();
     if (tab && tab.historyIndex > 0) {
@@ -363,7 +470,11 @@ async function navigateToUrlInternalTab(url, addHistory = true) {
     
     const parsed = parseNomadNetUrl(url);
     if (!parsed) {
-        alert('Invalid NomadNet URL format. Examples:\n- abcd1234...:/page/index.mu\n- nomadnetwork://abcd1234.../page/index.mu');
+        showNotification(
+            'Invalid NomadNet URL format.<br><br><strong>Examples:</strong><br>• abcd1234...:/page/index.mu<br>• nomadnetwork://abcd1234.../page/index.mu',
+            'error',
+            6000
+        );
         return;
     }
 
@@ -373,7 +484,7 @@ async function navigateToUrlInternalTab(url, addHistory = true) {
 
     tab.setUrl(url);
     
-    // NEW: Refresh cached nodes before fetching page to get latest node names
+    // Refresh cached nodes before fetching page to get latest node names
     try {
         const response = await fetch('/api/nodes');
         const nodes = await response.json();
@@ -413,6 +524,117 @@ function toggleViewTab() {
     }
 }
 
+// Notification system
+function showNotification(message, type = 'info', duration = 4000, stackPosition = null) {
+    const notification = document.createElement('div');
+    
+    // Different styles based on type
+    const styles = {
+        info: { bg: '#0969da', color: 'white' },
+        warning: { bg: '#fb8500', color: 'white' },
+        error: { bg: '#da3633', color: 'white' },
+        success: { bg: '#238636', color: 'white' }
+    };
+    
+    const style = styles[type] || styles.info;
+    
+    // Calculate position - if stackPosition is provided, stack notifications
+    let bottomPosition = '40px';
+    if (stackPosition !== null) {
+        bottomPosition = `${40 + (stackPosition * 90)}px`; // Stack with 80px spacing
+    }
+    
+    notification.style.cssText = `
+        position: fixed; bottom: ${bottomPosition}; right: 50px; z-index: 10000;
+        background: ${style.bg}; color: ${style.color}; 
+        padding: 12px 16px; border-radius: 6px; font-size: 13px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3); max-width: 350px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.4; transition: opacity 0.3s ease;
+    `;
+    notification.innerHTML = message;
+    document.body.appendChild(notification);
+    
+    // Remove after specified duration
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, duration);
+    
+    return notification;
+}
+
+// Function to show confirmation dialog with custom styling
+function showConfirmDialog(message, onConfirm, onCancel = null) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10001;
+        background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        background: #161b22; border: 2px solid #30363d; color: #e6edf3;
+        padding: 20px; border-radius: 8px; max-width: 400px; min-width: 300px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    `;
+    
+    dialog.innerHTML = `
+        <div style="margin-bottom: 16px; line-height: 1.5; font-size: 14px;">${message}</div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button id="cancel-btn" style="
+                background: #6e7681; color: white; border: none; 
+                padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px;
+            ">Cancel</button>
+            <button id="confirm-btn" style="
+                background: #238636; color: white; border: none; 
+                padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px;
+            ">Open</button>
+        </div>
+    `;
+    
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    
+    // Add event listeners
+    dialog.querySelector('#confirm-btn').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        onConfirm();
+    });
+    
+    dialog.querySelector('#cancel-btn').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        if (onCancel) onCancel();
+    });
+    
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+            if (onCancel) onCancel();
+        }
+    });
+    
+    // Close on Escape key
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            document.removeEventListener('keydown', escapeHandler);
+            if (overlay.parentNode) {
+                document.body.removeChild(overlay);
+                if (onCancel) onCancel();
+            }
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+}
+
 function addClickHandlersToCurrentTab() {
     const tab = getActiveTab();
     if (!tab) return;
@@ -426,34 +648,88 @@ function addClickHandlersToCurrentTab() {
         const destination = this.getAttribute('data-destination');
         const fields = this.getAttribute('data-fields');
         
-        console.log('Link clicked, href:', href, 'destination:', destination); // DEBUG
+        console.log('Link clicked, href:', href, 'destination:', destination, 'fields:', fields);
         
-        // Check if it's a file download link - CHECK destination first (primary), then href
+        // Check if it's a form submission (has data-fields)
+        if (fields && destination) {
+            console.log('Detected form submission link');
+            handleFormSubmit(destination, fields);
+            return;
+        }
+        
+        // Check if it's a file download link
         if ((destination && destination.includes(':/file/')) || (href && href.includes(':/file/'))) {
-            console.log('Detected file link, calling handleFileClick'); // DEBUG
-            // Use destination as primary, href as fallback
             const fileUrl = destination || href;
-            // Temporarily set href so handleFileClick can read it
             this.setAttribute('href', fileUrl);
             handleFileClick.call(this, event);
             return;
         }
         
-        // Handle other link types (your existing code)
+        // Handle other link types with notifications
         if (destination && destination.includes('lxmf@')) {
-            alert("This is an LXMF address, use official LXMF clients to open this link and chat with the peer (MeshChat, Sideband)");
+            // Extract the LXMF address
+            const lxmfAddress = destination.match(/lxmf@[a-fA-F0-9]+/)?.[0] || destination;
+            
+            // Show warning notification at bottom
+            showNotification(
+                "This is an LXMF address. Use official LXMF clients to open this link and chat with the peer (MeshChat, Sideband).",
+                'warning',
+                7000,
+                1
+            );
+            
+            // Copy to clipboard and show confirmation notification above it
+            navigator.clipboard.writeText(lxmfAddress).then(() => {
+                setTimeout(() => {
+                    showNotification(
+                        `LXMF address copied to clipboard!<br><br><strong>${lxmfAddress}</strong>`,
+                        'success',
+                        6500,
+                        0
+                    );
+                }, 500); // Small delay
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = lxmfAddress;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                setTimeout(() => {
+                    showNotification(
+                        `LXMF address copied to clipboard!<br><br><strong>${lxmfAddress}</strong>`,
+                        'success',
+                        4000,
+                        1
+                    );
+                }, 100);
+            });
             return;
         }
-        
+
+
+        if (destination && destination.includes('[')) {
+            showNotification(
+                "Error! This is not a valid link or address!",
+                'error'
+            );
+            return;
+        }
+
         if (destination && (destination.includes('http://') || destination.includes('https://'))) {
             let httpUrl = destination;
             if (destination.startsWith('nomadnetwork://')) {
                 httpUrl = destination.replace('nomadnetwork://', '');
             }
-            const userConfirmed = confirm("Open HTTP/HTTPS URL in a new browser window?\n\nURL: " + httpUrl);
-            if (userConfirmed) {
-                window.open(httpUrl, '_blank', 'noopener,noreferrer');
-            }
+            
+            showConfirmDialog(
+                `Open HTTP/HTTPS URL in a new browser window?<br><br><strong>URL:</strong> ${httpUrl}`,
+                () => {
+                    window.open(httpUrl, '_blank', 'noopener,noreferrer');
+                }
+            );
             return;
         }
         
@@ -468,23 +744,24 @@ function addClickHandlersToCurrentTab() {
         link.addEventListener('click', handleClick);
     });
     
-    // Also call the file download handler setup
     addFileDownloadHandlers();
 }
 
-// REPLACE your navigateToLinkTab function with this fixed version:
 function navigateToLinkTab(url, addHistory = true) {
     const tab = getActiveTab();
     if (!tab) return;
-    
+   
     console.log('navigateToLinkTab called with URL:', url);
-    
+   
     const parsedCurrent = parseNomadNetUrl(tab.currentUrl);
     if (!parsedCurrent) {
-        alert('Invalid NomadNet URL format. Examples:\n- abcd1234...:/page/index.mu\n- nomadnetwork://abcd1234.../page/index.mu');
+        showNotification(
+            'Invalid NomadNet URL format.<br><br><strong>Examples:</strong><br>• abcd1234...:/page/index.mu<br>• nomadnetwork://abcd1234.../page/index.mu',
+            'error',
+            6000
+        );
         return;
     }
-
     let parsed = parseNomadNetUrl(url);
     if (!parsed) {
         // Handle relative URLs (starting with : or /)
@@ -509,22 +786,74 @@ function navigateToLinkTab(url, addHistory = true) {
             url = fullUrl; // Update url variable too
         }
     }
-
     // Final check
     if (!parsed) {
         console.error('Failed to parse URL after all attempts:', url);
         return;
     }
-
     if (addHistory) {
         tab.addToHistory(url);
     }
-
     console.log('Final parsed result:', parsed);
     console.log('Final URL being used:', url);
-    
+   
     tab.setUrl(url);
-    fetchPageByUrlTab(parsed.hash, parsed.path, url);
+    
+    // Check if URL contains form data (from backtick variables)
+    if (parsed.formData && Object.keys(parsed.formData).length > 0) {
+        console.log('URL contains form data, submitting:', parsed.formData);
+        console.log('About to call submitFormData with:', {
+            nodeHash: parsed.hash,
+            path: parsed.path,
+            data: parsed.formData
+        });
+        
+        // Submit form data instead of regular fetch
+        submitFormData(parsed.hash, parsed.path, parsed.formData);
+    } else {
+        // Regular navigation without form data
+        fetchPageByUrlTab(parsed.hash, parsed.path, url);
+    }
+}
+
+function navigateHome() {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    // Check if we have a current URL to extract the node hash from
+    const currentParsed = parseNomadNetUrl(tab.currentUrl);
+    if (!currentParsed) {
+        showNotification(
+            'No current node - please browse to a node first',
+            'warning',
+            4000
+        );
+        return;
+    }
+    
+    // Navigate to the home page of the current node
+    const homeUrl = `${currentParsed.hash}:/page/index.mu`;
+    console.log('Navigating to home:', homeUrl);
+    
+    const addressBar = document.querySelector(`#${tab.id} .address-bar`);
+    if (addressBar) addressBar.value = homeUrl;
+    
+    navigateToUrlInternalTab(homeUrl, true);
+}
+
+// Also add the home button functionality to existing tabs
+function addHomeButtonToExistingTabs() {
+    document.querySelectorAll('.nav-controls').forEach(navControls => {
+        if (!navControls.querySelector('.home-btn')) {
+            const refreshBtn = navControls.querySelector('.nav-btn:nth-child(3)');
+            const homeBtn = document.createElement('button');
+            homeBtn.className = 'nav-btn home-btn';
+            homeBtn.onclick = navigateHome;
+            homeBtn.title = 'Go to home page';
+            homeBtn.textContent = '🏠';
+            refreshBtn.insertAdjacentElement('afterend', homeBtn);
+        }
+    });
 }
 
 function fetchPageByUrlTab(hash, path, originalUrl) {
@@ -539,8 +868,12 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
     tab.selectedNode = hash;
     tab.setLoading(true);
 
-
-    const nodeName = tab.knownNodeName || getNodeName(hash);
+    // Get the node name for the CURRENT hash, not the stored one
+    const nodeName = getNodeName(hash);
+    
+    // Update the tab's known node name to the current node
+    tab.knownNodeName = nodeName;
+    
     const pageTitle = document.querySelector(`#${tab.id} .page-title`);
     const pageUrl = document.querySelector(`#${tab.id} .page-url`);
     const pageContent = document.querySelector(`#${tab.id} .page-content`);
@@ -558,6 +891,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
     if (viewToggle) viewToggle.style.display = 'none';
     if (addressBar) addressBar.value = originalUrl;
     
+    // Update tab title to show we're loading the new node
     tab.setTitle(`Loading ${nodeName}...`);
     
     // Update selected node in sidebar
@@ -598,6 +932,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                         viewToggle.textContent = 'Raw View';
                     }
                     
+                    // Set the final tab title to the current node name
                     tab.setTitle(nodeName);
                     addClickHandlersToCurrentTab();
                     
@@ -624,7 +959,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             }
         });
 }
-
 
         // Get Node Name function
         function getNodeName(hash) {
@@ -714,6 +1048,9 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             if (micronParser) {
                 let html = micronParser.convertMicronToHtml(content);
                 
+                // Add form field support AFTER Micron parsing
+                html = addFormFieldSupport(html);
+                
                 // Add click handlers to any links that the original parser created
                 html = addClickHandlersToLinks(html);
                 
@@ -723,6 +1060,154 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 console.log('No parser available, returning escaped HTML');
                 return escapeHtml(content);
             }
+        }
+
+        function addFormFieldSupport(html) {
+            console.log('Searching for form elements in HTML...');
+            
+            // Let's search for specific text patterns that might indicate fields/buttons
+            if (html.includes('ref')) {
+                console.log('Found "ref" in HTML');
+                const refIndex = html.indexOf('ref');
+                console.log('Context around "ref":', html.substring(refIndex - 100, refIndex + 100));
+            }
+            
+            if (html.includes('Search')) {
+                console.log('Found "Search" in HTML');
+                const searchIndex = html.indexOf('Search');
+                console.log('Context around "Search":', html.substring(searchIndex - 100, searchIndex + 100));
+            }
+            
+            if (html.includes('version')) {
+                console.log('Found "version" in HTML');
+                const versionIndex = html.indexOf('version');
+                console.log('Context around "version":', html.substring(versionIndex - 100, versionIndex + 100));
+            }
+            
+            // Also let's see if there are any existing links we can modify
+            const linkMatches = html.match(/<a[^>]*>.*?<\/a>/g);
+            if (linkMatches) {
+                console.log('Found links:', linkMatches);
+            }
+            
+            return html;
+        }
+
+        function handleFormSubmit(path, fieldsSpec) {
+            const tab = getActiveTab();
+            if (!tab) return;
+            
+            console.log('handleFormSubmit called with path:', path, 'fields:', fieldsSpec);
+            
+            // Parse current URL to get node hash
+            const currentParsed = parseNomadNetUrl(tab.currentUrl);
+            if (!currentParsed) {
+                showNotification('Cannot submit form - no current node context', 'error', 4000);
+                return;
+            }
+            
+            console.log('Current node hash:', currentParsed.hash);
+            
+            // FIRST: Extract any backtick parameters from the path itself
+            let cleanPath = path;
+            let pathBacktickData = {};
+            
+            if (path.includes('`')) {
+                const [pathPart, paramsPart] = path.split('`', 2);
+                cleanPath = pathPart;
+                
+                if (paramsPart) {
+                    const params = paramsPart.split('|');
+                    params.forEach(param => {
+                        if (param.includes('=')) {
+                            const [key, value] = param.split('=', 2);
+                            pathBacktickData[key.trim()] = value.trim();
+                        }
+                    });
+                }
+            }
+            
+            console.log('Path backtick data:', pathBacktickData);
+            console.log('Clean path:', cleanPath);
+            
+            // Collect form data from current page
+            const formData = {};
+            const inputs = document.querySelectorAll(`#${tab.id} .page-content input[name], #${tab.id} .page-content textarea[name]`);
+            
+            inputs.forEach(input => {
+                if (input.type === 'radio' && !input.checked) return;
+                if (input.type === 'checkbox' && !input.checked) return;
+                formData[input.name] = input.value;
+            });
+            
+            console.log('Collected form data:', formData);
+            
+            // Parse fields specification
+            const fields = fieldsSpec.split('|').filter(f => f.trim());
+            let submitData = { ...pathBacktickData }; // Start with path backtick data
+            
+            fields.forEach(field => {
+                const trimmedField = field.trim();
+                
+                if (trimmedField.includes('=')) {
+                    const [key, value] = trimmedField.split('=', 2);
+                    submitData[key.trim()] = value.trim();
+                } else if (trimmedField === '*') {
+                    submitData = { ...submitData, ...formData };
+                } else if (formData.hasOwnProperty(trimmedField)) {
+                    submitData[trimmedField] = formData[trimmedField];
+                } else {
+                    console.warn(`Field '${trimmedField}' referenced but not found in form. Sending empty value.`);
+                    submitData[trimmedField] = '';
+                }
+            });
+            
+            console.log('Final merged submit data:', submitData);
+            
+            // Submit form data with clean path (no backticks)
+            submitFormData(currentParsed.hash, cleanPath, submitData);
+        }
+
+        function submitFormData(nodeHash, path, data) {
+            const tab = getActiveTab();
+            if (!tab) return;
+            
+            console.log('submitFormData called with:', {nodeHash, path, data});
+            console.log('Data object size:', Object.keys(data).length, 'parameters');
+            
+            // Don't add form data to URL - keep the path clean
+            const cleanPath = path.startsWith(':') ? path.substring(1) : path;
+            const fullUrl = `${nodeHash}:${cleanPath}`;
+            
+            console.log('Final URL to navigate to:', fullUrl);
+            console.log('Form data to submit:', data);
+            
+            // Navigate with form data as separate parameter
+            navigateToUrlInternalTabWithFormData(fullUrl, data, true);
+        }
+
+        function navigateToUrlInternalTabWithFormData(url, formData, addHistory = true) {
+            const tab = getActiveTab();
+            if (!tab) return;
+            
+            const parsed = parseNomadNetUrl(url);
+            if (!parsed) {
+                showNotification(
+                    'Invalid NomadNet URL format',
+                    'error',
+                    4000
+                );
+                return;
+            }
+
+            if (addHistory) {
+                tab.addToHistory(url);
+            }
+
+            tab.setUrl(url);
+            
+            // Fetch page with form data
+            fetchPageByUrlTabWithFormData(parsed.hash, parsed.path, url, formData);
         }
 
         function addClickHandlersToLinks(html) {
@@ -767,31 +1252,52 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
 
         function parseNomadNetUrl(url) {
             console.log('Parsing URL:', url);
-            
+        
             // Clean up common URL prefixes
             url = url.replace(/^nomadnetwork:\/\//, '');
-            
+        
             // Match hash and optional path (including parameters after backtick)
             const match = url.match(/^([a-fA-F0-9<>:]{32,})(?:[:\/](.*))?$/);
             if (match) {
                 const cleanHash = match[1].replace(/[<>:]/g, '');
                 let path = match[2];
-                
+            
                 // Default to index page if no path
                 if (!path || path === '') {
                     path = 'page/index.mu';
                 }
-                
+            
+                // Handle backtick variables
+                let formData = {};
+                if (path.includes('`')) {
+                    const [pathPart, varsPart] = path.split('`', 2);
+                    path = pathPart;
+                    
+                    // Parse variables after backtick
+                    if (varsPart) {
+                        const vars = varsPart.split('|');
+                        for (const varPair of vars) {
+                            if (varPair.includes('=')) {
+                                const [key, value] = varPair.split('=', 2);
+                                formData[key] = value;
+                            }
+                        }
+                    }
+                }
+            
                 // Ensure path starts with /
                 if (!path.startsWith('/')) {
                     path = '/' + path;
                 }
-                
-                console.log('Parsed URL - Hash:', cleanHash.substring(0, 16) + '...', 'Path:', path);
-                console.log('Full path including parameters:', path);
-                return { hash: cleanHash, path: path };
-            }
             
+                console.log('Parsed URL - Hash:', cleanHash.substring(0, 16) + '...', 'Path:', path);
+                if (Object.keys(formData).length > 0) {
+                    console.log('Form data from URL:', formData);
+                }
+                
+                return { hash: cleanHash, path: path, formData: formData };
+            }
+        
             console.log('Failed to parse URL:', url);
             return null;
         }
@@ -851,67 +1357,193 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
 
         function updateNodes() {
             fetch('/api/nodes')
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                })
                 .then(nodes => {
+                    // Reset any node fetch failure tracking if you want to add it
+                    
+                    // Create a hash to detect actual changes (ignoring just time updates)
+                    const nodesHash = JSON.stringify(nodes.map(n => ({
+                        hash: n.hash, 
+                        name: n.name,
+                        app_data_length: n.app_data_length
+                    })));
+                    
+                    // Only rebuild DOM if nodes actually changed (not just time updates)
+                    if (nodesHash === lastNodesHash) {
+                        // Just update the time-sensitive parts
+                        nodes.forEach(node => {
+                            const nodeItem = document.querySelector(`[data-hash="${node.hash}"]`);
+                            if (nodeItem) {
+                                const infoDiv = nodeItem.querySelector('.node-info');
+                                if (infoDiv) {
+                                    infoDiv.textContent = `📊 ${node.app_data_length} bytes announced • ${node.last_seen_relative}`;
+                                }
+                            }
+                        });
+                        cachedNodes = nodes;
+                        document.getElementById('node-count').textContent = nodes.length;
+                        return;
+                    }
+                    
+                    lastNodesHash = nodesHash;
+                    console.log('Node list changed, rebuilding DOM');
+                    
+                    // Your existing DOM rebuild code continues here...
                     cachedNodes = nodes;
                     console.log('Cached nodes updated:', cachedNodes.length, 'nodes');
                     console.log('First cached node hash example:', cachedNodes.length > 0 ? cachedNodes[0].hash : 'none');
                     const list = document.getElementById('node-list');
-                    const searchTerm = document.getElementById('node-search').value.toLowerCase(); // Save current search
-           
+                    const searchTerm = document.getElementById('node-search').value.toLowerCase();
+
                     if (nodes.length === 0) {
                         list.innerHTML = '<div style="text-align: center; padding: 20px; color: #7d8590; font-size: 12px;">Scanning for NomadNet Nodes...</div>';
                         return;
                     }
-           
+
                     let html = '';
                     nodes.forEach((node, i) => {
                         const activeTab = getActiveTab();
-                        const selected = (activeTab && activeTab.selectedNode === node.hash) ? 'selected' : '';
-                
-                        // Check if this node is favorited
+                        const selected = '';
+            
                         const isFavorite = favoriteNodes.some(fav => fav.hash === node.hash);
                         const starIcon = isFavorite ? '★' : '☆';
                         const starColor = isFavorite ? '#ffa657' : '#7d8590';
-                
+            
                         html += `
-                            <div class="node-item ${selected}" id="node-${i}" data-hash="${escapeHtml(node.hash)}" data-name="${escapeHtml(node.name)}">
+                            <div class="node-item ${selected}" id="node-${i}" data-hash="${escapeHtml(node.hash)}" data-name="${escapeHtml(node.name)}" style="padding: 6px 8px; margin-bottom: 4px;">
                                 <div style="position: relative;">
-                                    <button class="star-btn" onclick="toggleFavorite('${node.hash}', '${escapeHtml(node.name)}'); event.stopPropagation();" 
-                                            style='position: absolute; top: 0; right: 0; background: none; border: none; color: ${starColor}; cursor: pointer; font-size: 25px; padding: 4px; z-index: 10;'>${starIcon}</button>
-                                    <div class="node-title">${escapeHtml(node.name)}</div>
-                                    <div class="node-hash">${node.hash}</div>
-                                    <div class="node-info">📊 ${node.app_data_length} bytes announced • ${node.last_seen_relative}</div>
+                                    <!-- Vertical stack of buttons on the right -->
+                                    <div style="position: absolute; top: 0; right: 0; display: flex; flex-direction: column; z-index: 10;">
+                                        <button class="info-btn" 
+                                                data-hash="${node.hash}" 
+                                                data-name="${escapeHtml(node.name)}" 
+                                                data-last-seen="${node.last_seen}" 
+                                                data-data-length="${node.app_data_length}" 
+                                                data-announce-count="${node.announce_count}" 
+                                                data-relative-time="${node.last_seen_relative}"
+                                                style="background: none; border: none; color: #58a6ff; cursor: pointer; font-size: 15px; padding: 1px; margin-bottom: 1px;" 
+                                                title="Show node information">ℹ️</button>
+                                        <button class="star-btn" 
+                                                data-hash="${node.hash}" 
+                                                data-name="${escapeHtml(node.name)}"
+                                                style="background: none; border: none; color: ${starColor}; cursor: pointer; font-size: 26px; padding: 2px;"
+                                                title="Toggle favorite">${starIcon}</button>
+                                    </div>
+                                    <div class="node-title" style="font-size: 12px; line-height: 1.2; margin-bottom: 4px;" title="NomadNet Node Name">🖥️ ${escapeHtml(node.name)}</div>
+                                    <div class="node-hash" style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;"" title="Node Hash Address">
+                                        <span class="copy-icon" onclick="copyHashToClipboard('${node.hash}'); event.stopPropagation();" 
+                                            style="cursor: pointer; color: #7d8590; font-size: 12px; padding: 2px;" title="Copy hash to clipboard">📋</span>
+                                        <span>${node.hash}</span>
+                                    </div>
+                                    <div class="node-info" title="Announce info">📊 ${node.app_data_length} bytes announced • ${node.last_seen_relative}</div>
                                 </div>
                             </div>
                         `;
                     });
-            
+
                     list.innerHTML = html;
-            
-                    // Reapply search filter if there was one
+
                     if (searchTerm) {
                         filterNodes();
                     }
-            
-                    document.querySelectorAll('.node-item').forEach(item => {
-                        item.addEventListener('click', function(e) {
-                            const hash = this.getAttribute('data-hash');
-                            const name = this.getAttribute('data-name');
-                            browseNode(hash, name);
-                        });
-                    });
-            
+                    
                     document.getElementById('node-count').textContent = nodes.length;
+                    updateNodeSelection();
+                })
+                .catch(error => {
+                    console.warn('Nodes API error:', error);
+                    // Keep existing nodes display on error rather than clearing it
                 });
         }
-        
+
         function updateStatus() {
+            // Handle announce count and node count separately with independent error handling
             fetch('/api/status')
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                })
                 .then(data => {
+                    // Update announce count successfully
                     document.getElementById('announce-count').textContent = data.total_announces;
+                    // Note: We don't reset statusFetchFailures here since this is a different endpoint
+                })
+                .catch(error => {
+                    console.warn('Basic status API error:', error);
+                    // Don't affect connection status error tracking - these are separate concerns
                 });
+            
+            // Handle connection status with dedicated error tracking
+            fetch('/api/connection-status')
+                .then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    return r.json();
+                })
+                .then(data => {
+                    // SUCCESSFUL RESPONSE - Reset all failure tracking
+                    const wasInErrorState = statusFetchFailures >= maxStatusFailures;
+                    statusFetchFailures = 0;
+                    lastStatusFetch = Date.now();
+                    
+                    // If we were previously in error state, log the recovery
+                    if (wasInErrorState) {
+                        console.log('Backend connection recovered! Status:', data.status);
+                    }
+                    
+                    // Update status display with received data
+                    updateConnectionStatus(data.status, data.message, data.color);
+                })
+                .catch(error => {
+                    statusFetchFailures++;
+                    const currentTime = Date.now();
+                    
+                    console.warn(`Connection status fetch failed (${statusFetchFailures}/${maxStatusFailures}):`, error);
+                    
+                    // Only show connection error after multiple consecutive failures
+                    if (statusFetchFailures >= maxStatusFailures) {
+                        updateConnectionStatus('connerror', 'Error! Python script stopped?', 'red');
+                    } else {
+                        // During the failure buildup, show a "checking" status instead of keeping stale status
+                        if (statusFetchFailures === 1) {
+                            updateConnectionStatus('waiting', 'Checking connection...', 'yellow');
+                        } else if (statusFetchFailures === 2) {
+                            updateConnectionStatus('waiting', 'Retrying connection check...', 'yellow');
+                        }
+                        // For statusFetchFailures === 3, it will hit the >= maxStatusFailures condition above
+                    }
+                });
+        }
+
+        function forceStatusUpdate() {
+            console.log('🔄 Forcing immediate status update...');
+            
+            // Reset failure counter to give backend a chance
+            statusFetchFailures = 0;
+            
+            // Call updateStatus immediately
+            updateStatus();
+        }
+
+        function updateConnectionStatus(status, message, color) {
+            // Use ID selector instead of class to avoid the class replacement issue
+            const statusElement = document.getElementById('connection-status') || document.querySelector('.status-indicator');
+            if (statusElement) {
+                // Keep a base class and add the status class
+                statusElement.className = `status-indicator ${status}`;
+                statusElement.innerHTML = `<strong style="color: ${getStatusColor(color)};"> ● ${message}</strong>`;
+            }
+        }
+
+        function getStatusColor(color) {
+            switch(color) {
+                case 'green': return '#40ed3a';
+                case 'yellow': return '#f59e0b'; 
+                case 'red': return '#ef4444';
+                default: return '#7d8590';
+            }
         }
         
         function browseNode(hash, name) {
@@ -945,65 +1577,123 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             return div.innerHTML;
         }
 
-        function handleFileDownload(nodeHash, filePath) {
-            const downloadUrl = `/api/download/${nodeHash}?path=${encodeURIComponent(filePath)}`;
-            const filename = filePath.split('/').pop();
-            
-            // Create notification element
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed; bottom: 60px; right: 60px; z-index: 10000;
-                background: #1a1a1a; border: 3px solid #333333; color: #ffffff;
-                padding: 16px 20px; border-radius: 0px; font-size: 14px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.5); min-width: 280px;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            `;
-            notification.innerHTML = `📁 Downloading ${filename}...<small>Please wait...</small>`;
-            document.body.appendChild(notification);
-            
-            // Use fetch for better control
-            fetch(downloadUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error('Download failed');
+    function handleFileDownload(nodeHash, filePath) {
+        const downloadUrl = `/api/download/${nodeHash}?path=${encodeURIComponent(filePath)}`;
+        const filename = filePath.split('/').pop();
+        
+        // Create notification element with progress bar
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed; bottom: 60px; right: 60px; z-index: 10000;
+            background: #1a1a1a; border: 3px solid #333333; color: #ffffff;
+            padding: 16px 20px; border-radius: 0px; font-size: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); min-width: 320px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        `;
+        
+        notification.innerHTML = `
+            <div>📁 Downloading ${filename}...</div>
+            <div style="margin: 8px 0; background: #333; height: 6px; border-radius: 3px; overflow: hidden;">
+                <div id="progress-bar" style="background: #58a6ff; height: 100%; width: 0%; transition: width 0.3s;"></div>
+            </div>
+            <div id="progress-text" style="font-size: 12px; color: #7d8590;">Download in progress, please wait...</div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        const progressBar = notification.querySelector('#progress-bar');
+        const progressText = notification.querySelector('#progress-text');
+        
+        // Fetch with progress tracking
+        fetch(downloadUrl)
+            .then(response => {
+                if (!response.ok) throw new Error('Download failed');
+                
+                const contentLength = response.headers.get('Content-Length');
+                const total = parseInt(contentLength, 10);
+                let loaded = 0;
+                
+                // If no content length, we can't show progress
+                if (!total) {
+                    progressText.textContent = 'Downloading... (size unknown)';
                     return response.blob();
-                })
-                .then(blob => {
-                    // Update notification
-                    notification.style.borderColor = '#1a1a1a';
-                    notification.style.color = '#ffffff';
-                    notification.innerHTML = `✅ Download of ${filename} completed!`;
-                    
-                    // Create download link
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = filename;
-                    link.style.display = 'none';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                    
-                    // Remove notification after delay
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
+                }
+                
+                const reader = response.body.getReader();
+                const stream = new ReadableStream({
+                    start(controller) {
+                        function pump() {
+                            return reader.read().then(({ done, value }) => {
+                                if (done) {
+                                    controller.close();
+                                    return;
+                                }
+                                
+                                loaded += value.byteLength;
+                                const progress = (loaded / total * 100).toFixed(1);
+                                
+                                // Update progress bar and text
+                                progressBar.style.width = progress + '%';
+                                progressText.textContent = `${progress}% (${formatFileSize(loaded)} / ${formatFileSize(total)})`;
+                                
+                                controller.enqueue(value);
+                                return pump();
+                            });
                         }
-                    }, 3000);
-                })
-                .catch(error => {
-                    // Show error
-                    notification.style.borderColor = '##1a1a1a';
-                    notification.style.color = '#ff7b72';
-                    notification.innerHTML = `❌ Download failed<br><small>${error.message}</small>`;
-                    
-                    setTimeout(() => {
-                        if (notification.parentNode) {
-                            notification.parentNode.removeChild(notification);
-                        }
-                    }, 5000);
+                        return pump();
+                    }
                 });
-        }
+                
+                return new Response(stream).blob();
+            })
+            .then(blob => {
+                // Update notification for completion
+                notification.style.borderColor = '#1a1a1a';
+                progressBar.style.background = '#7c3aed';
+                progressText.textContent = 'Download completed!';
+                notification.querySelector('div').innerHTML = `✅ Downloaded ${filename}`;
+                
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+                
+                // Remove notification after delay
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 3000);
+            })
+            .catch(error => {
+                // Show error
+                notification.style.borderColor = '#1a1a1a';
+                progressBar.style.background = '#ff7b72';
+                progressText.textContent = 'Download failed!';
+                notification.querySelector('div').innerHTML = `❌ Download failed<br><small>${error.message}</small>`;
+                
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 5000);
+            });
+    }
+
+    // Helper function to format file sizes
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }        
 
     // Parse nomadnet:// URLs and convert to download links
     function parseFileURL(url) {
@@ -1070,7 +1760,11 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             handleFileDownload(nodeHash, filePath);
         } else {
             console.warn('Could not parse file URL:', href);
-            alert('Unable to download file - invalid URL format');
+            showNotification(
+                'Unable to download file - invalid URL format',
+                'error',
+                4000
+            );
         }
     }
 
@@ -1138,18 +1832,33 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         function toggleFavorite(hash, name) {
             console.log('toggleFavorite called with:', hash, name);
             const existing = favoriteNodes.findIndex(fav => fav.hash === hash);
-    
+
             if (existing >= 0) {
                 favoriteNodes.splice(existing, 1);
                 console.log('Removed favorite, new count:', favoriteNodes.length);
+                
+                // Immediately update the star appearance
+                const starBtn = document.querySelector(`[data-hash="${hash}"].star-btn`);
+                if (starBtn) {
+                    starBtn.style.color = '#7d8590';
+                    starBtn.textContent = '☆';
+                }
+                
             } else {
                 favoriteNodes.push({ hash: hash, name: name });
                 console.log('Added favorite, new count:', favoriteNodes.length);
+                
+                // Immediately update the star appearance
+                const starBtn = document.querySelector(`[data-hash="${hash}"].star-btn`);
+                if (starBtn) {
+                    starBtn.style.color = '#ffa657';
+                    starBtn.textContent = '★';
+                }
             }
-    
+
             saveFavorites();
             updateFavoritesDisplay();
-            updateNodes(); // Refresh to update star icons
+            // updateNodes(); // You can remove this line if you don't want to wait for the refresh
         }
 
         function updateFavoritesDisplay() {
@@ -1200,6 +1909,47 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             }
         }
 
+        function fetchPageByUrlTabWithFormData(hash, path, originalUrl, formData) {
+            const tab = getActiveTab();
+            if (!tab) return;
+            
+            // Set up the page loading UI
+            tab.setLoading(true);
+            const nodeName = tab.knownNodeName || getNodeName(hash);
+            
+            // Show loading state
+            const pageContent = document.querySelector(`#${tab.id} .page-content`);
+            if (pageContent) {
+                pageContent.innerHTML = `<div style="color: #58a6ff; text-align: center; padding: 40px;">Submitting form...<br><br><strong>${nodeName}</strong></div>`;
+            }
+            
+            // Send POST request with form data
+            fetch(`/api/fetch/${hash}?path=${encodeURIComponent(path)}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(r => r.json())
+            .then(response => {
+                if (response.status === 'success') {
+                    // Handle successful response same as regular page loading
+                    tab.currentRawContent = response.content;
+                    const renderedHtml = parseMicronContent(response.content);
+                    if (pageContent) pageContent.innerHTML = renderedHtml;
+                    addClickHandlersToCurrentTab();
+                } else {
+                    if (pageContent) pageContent.innerHTML = `<div class="error">Form submission failed: ${response.error}</div>`;
+                }
+                tab.setLoading(false);
+            })
+            .catch(err => {
+                if (pageContent) pageContent.innerHTML = `<div class="error">Network error: ${err.message}</div>`;
+                tab.setLoading(false);
+            });
+        }
+
         document.addEventListener('keydown', (e) => {
             // Tab navigation with left/right arrows (with Ctrl/Cmd)
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
@@ -1234,6 +1984,10 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     case 'b':
                         e.preventDefault();
                         refreshPageTab();
+                        break;
+                    case 'f':
+                        e.preventDefault();
+                        addFavoriteFromUrl();
                         break;
                 }
             }
@@ -1278,28 +2032,176 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             console.log('Closed all tabs except active tab:', currentActiveTab.title);
         }
 
-        // Initialize everything when page loads
-        // REPLACE the end of your existing DOMContentLoaded with this:
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('NomadNet Browser starting...');
-            await initializeMicronParser();
-            loadFavorites();
+        function updateNodeSelection() {
+            const activeTab = getActiveTab();
+            if (!activeTab || !activeTab.selectedNode) return;
             
-            // CREATE FIRST TAB
-            createNewTab();
+            // Remove selected class from all nodes
+            document.querySelectorAll('.node-item').forEach(item => item.classList.remove('selected'));
             
-            // Start regular updates
-            setInterval(() => {
-                updateNodes();
-                updateStatus();
-            }, 1500);
+            // Add selected class to the current tab's node
+            const nodeItem = document.querySelector(`[data-hash="${activeTab.selectedNode}"]`);
+            if (nodeItem) {
+                nodeItem.classList.add('selected');
+            }
+        }
+
+        function copyHashToClipboard(hash) {
+            navigator.clipboard.writeText(hash).then(() => {
+                // Show a brief confirmation
+                showCopyConfirmation();
+            }).catch(err => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = hash;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showCopyConfirmation();
+            });
+        }
+
+        function showCopyConfirmation() {
+            showNotification('Hash copied to clipboard!', 'success', 2000);
+        }
+
+        function showNodeInfo(hash, name, lastSeen, dataLength, announceCount, relativeTime) {
+            // Get node-specific announce count from cached nodes
+            const nodeData = cachedNodes.find(n => n.hash === hash);
+            const hops = nodeData ? nodeData.hops : 'Unknown';
+            const nextHopInterface = nodeData ? nodeData.next_hop_interface : 'Unknown';
+            const nodeAnnounceCount = nodeData ? nodeData.node_announce_count : 'Unknown';
+    
+            // Create detailed info popup
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10000;
+                background: #161b22; border: 2px solid #30363d; color: #e6edf3; 
+                padding: 16px 20px; border-radius: 6px; font-size: 13px; 
+                box-shadow: 0 8px 24px rgba(0,0,0,0.5); min-width: 350px; max-width: 500px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            `;
             
-            // Initial load
+            // Format timestamp if available
+            let formattedTime = 'Unknown';
+            if (lastSeen && lastSeen !== 'undefined') {
+                try {
+                    const date = new Date(lastSeen);
+                    formattedTime = date.toLocaleString();
+                } catch (e) {
+                    formattedTime = lastSeen;
+                }
+            }
+            
+            notification.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0; color: #58a6ff; font-size: 16px;">Node Information</h3>
+                    <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: #7d8590; cursor: pointer; font-size: 18px;">&times;</button>
+                </div>
+                <div style="line-height: 1.6;">
+                    <div style="margin-bottom: 8px;"><strong style="color: #ffa657;">Node Name:</strong> ${name}</div>
+                    <div style="margin-bottom: 8px;"><strong style="color: #ffa657;">Hash Address:</strong> <span style="font-family: monospace; font-size: 11px; background: #21262d; padding: 2px 4px; border-radius: 3px;">${hash}</span></div>
+                    <div style="margin-bottom: 8px;"><strong style="color: #ffa657;">Network Hops:</strong> ${hops === 'Unknown' ? 'Unknown' : hops + (hops === 1 ? ' hop' : ' hops')} away</div>
+                    <div style="margin-bottom: 8px;"><strong style="color: #ffa657;">Interface:</strong> ${nextHopInterface}</div>
+                    <div style="margin-bottom: 8px;"><strong style="color: #ffa657;">Announce Data:</strong> ${dataLength} bytes</div>
+                    <div style="margin-bottom: 8px;"><strong style="color: #ffa657;">Last Announced:</strong> ${relativeTime}</div>
+                    <div style="margin-bottom: 8px;"><strong style="color: #ffa657;">Last Received:</strong> ${formattedTime}</div>
+                    <div style="margin-bottom: 8px;"><strong style="color: #ffa657;">Node Announced:</strong> ${nodeAnnounceCount} time(s)</div>
+                </div>
+                <div style="margin-top: 12px; display: flex; gap: 8px; justify-content: center;">
+                    <button onclick="copyHashToClipboard('${hash}');" 
+                            style="background: #238636; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        Copy Hash
+                    </button>
+                    <button onclick="this.parentElement.parentElement.remove();" 
+                            style="background: #7d8599; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove info blob after 30 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 30000);
+        }
+
+        // Initialize everything when page loads (DOMContentLoaded)
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('NomadNet Browser starting...');
+        await initializeMicronParser();
+        loadFavorites();
+        
+        // ADD EVENT DELEGATION HERE - prevents click refresh glitch
+        document.getElementById('node-list').addEventListener('click', function(e) {
+            // Handle info button clicks
+            if (e.target.classList.contains('info-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const hash = e.target.getAttribute('data-hash');
+                const name = e.target.getAttribute('data-name');
+                const lastSeen = e.target.getAttribute('data-last-seen');
+                const dataLength = e.target.getAttribute('data-data-length');
+                const announceCount = e.target.getAttribute('data-announce-count');
+                const relativeTime = e.target.getAttribute('data-relative-time');
+                
+                showNodeInfo(hash, name, lastSeen, dataLength, announceCount, relativeTime);
+                return;
+            }
+            
+            // Handle star button clicks
+            if (e.target.classList.contains('star-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const hash = e.target.getAttribute('data-hash');
+                const name = e.target.getAttribute('data-name');
+                toggleFavorite(hash, name);
+                return;
+            }
+        
+            // Handle node item clicks
+            const nodeItem = e.target.closest('.node-item');
+            if (nodeItem && !e.target.closest('.star-btn') && !e.target.closest('.info-btn') && !e.target.closest('.copy-icon')) {
+                const hash = nodeItem.getAttribute('data-hash');
+                const name = nodeItem.getAttribute('data-name');
+                browseNode(hash, name);
+            }
+        });
+
+        // CREATE FIRST TAB
+        createNewTab();
+
+        // ENHANCED polling with recovery logic
+        setInterval(() => {
             updateNodes();
             updateStatus();
             
-            console.log('Browser initialization complete');
-        });
+            // If we're in error state, occasionally try to recover faster
+            if (statusFetchFailures >= maxStatusFailures) {
+                // Every 5th poll (15 seconds), try an immediate recovery attempt
+                if (Math.random() < 0.2) {  // 20% chance = roughly every 15 seconds
+                    console.log('Attempting connection recovery...');
+                    setTimeout(() => {
+                        statusFetchFailures = Math.max(0, statusFetchFailures - 1); // Reduce failure count slightly
+                        updateStatus();
+                    }, 1000); // Try again in 1 second
+                }
+            }
+        }, 2000);
+
+        // Initial load
+        updateNodes();
+        updateStatus();
+
+        console.log('Browser initialization complete');
+    });
     </script>
 </body>
 </html>

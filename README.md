@@ -1,4 +1,4 @@
-# rBrowser v1.0
+# rBrowser v1.0 - Standalone Nomadnet Browser
 
 -----
 
@@ -7,7 +7,7 @@
 
 -----
 
-# rBrowser: Reticulum Standalone NomadNet Browser
+# rBrowser: Standalone NomadNet Browser
 
 A standalone web-based UI browser for exploring NomadNetwork Nodes and Pages over Reticulum Network. 
 
@@ -102,7 +102,8 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **URL Navigation**: Address bar with manual URL input support
 - ✅ **Navigation History**: Back/forward button functionality
 - ✅ **Link Detection**: Automatic detection of NomadNet URLs in content
-- ✅ **Click Navigation**: Navigate by clicking links in rendered content
+- ✅ **Click Navigation**: Navigate by clicking links in rendered content 
+- ✅ **Notification System**: Modern info box notifications when info are needed
 - ✅ **Multiple URL Formats**: Enhanced parsing for various NomadNet URL conventions
 - ✅ **Page Title Extraction**: Parse and display proper page titles in all UI info text
 - ✅ **Navigation Breadcrumbs**: Show current node name and url location path
@@ -115,12 +116,19 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **Navigation Shortcuts**: Keyboards shortcuts for tab navigation / new / close / reload page
 - ✅ **Web UI**: Implemented waitress and gunicorn production ready web servers, fallback to flask if missing.
 - ✅ **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
+- ✅ **User inputs support**: Form, URL, and input boxes sending user input are supported.
 
 ## Next Implementations:
 ### The following features are planned for the next version:
 
-- ✖️ **Form and input boxes**: sending user input in nomad pages, work in progress!
-- ✖️ **Fingerprint**: Send identity and lxmf address to the host node, coming soon!
+
+- ✖️ **Fingerprint**: Send identity and lxmf address to the host node
+
+
+## Known Issues:
+
+- Input box parameter sending is failing due to the user customization  on some nodes with non-standard nomadnet micron format. (90% of the nodes are perfectly working!)
+- Code needs a super clean-up :D
 
 -----
 
