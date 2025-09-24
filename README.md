@@ -15,7 +15,7 @@ This browser automatically discovers NomadNet nodes through network announces an
 
 -----
 
-## Features
+## Some Features:
 
 - **Real-time Node Discovery**: Automatically detects and lists NomadNetwork nodes as they announce on the network
 - **Web-based Interface**: Modern, responsive browser interface accessible at `localhost:5000`
@@ -24,36 +24,46 @@ This browser automatically discovers NomadNet nodes through network announces an
 - **Dual View Modes**: Toggle between rendered Micron content and raw text view (top-right Rendered / Raw button)
 - **Link Navigation**: Click on links within Micron content to navigate between pages
 - **Connection Status**: Real-time display of network status and discovered pages / announced nodes
+- **File download support**: Download files hosted on nomadnet nodes
 
 ## Requirements
 
 ### System Requirements
+
 - **Python**: 3.7 or higher
 - **Operating System**: Linux, macOS, or Windows
 - **Network**: Access to a Reticulum network (radio interfaces, internet gateways, or local testnet)
 
 ### Python Dependencies
-- `flask` >= 2.0.0 - Web framework for the browser UI interface
+
 - `reticulum` >= rns 1.0.0 - Reticulum networking protocol stack for connection and NomadNetwork retrival
+- `flask` >= 2.0.0 - Base Web framework for the browser UI interface
+- `waitress` - Web Server Framework for windows os
+- `gunicorn` - Web Server Framework for Linux
+
 
 -----
 
 ## Installation
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/fr33n0w/rBrowser.git
    cd rBrowser
    ```
 
 2. **Install Python dependencies:**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. **Configure Reticulum:**
    
-   Before launching the script you need a full working instance of Reticulum, so you need to configure at least a TCPClientInterface in your ./reticulum/config file. Don't need to run rns manually, just make sure your instance is working and can connect to Reticulum Network!
+   Before launching the script you need a full working instance of Reticulum, so you need to configure at least one TCPClientInterface in your ./reticulum/config file. 
+
+   You don't need to run rns manually, just make sure your instance is working and can connect to Reticulum Network!
 
 -----
 
@@ -70,27 +80,35 @@ This browser automatically discovers NomadNet nodes through network announces an
    ```
 
 3. **Wait for node discovery:**
+
    - The browser will start listening for NomadNetwork announces
    - Discovered nodes will appear in the left sidebar
    - Click on any node to browse its content and navigate pages
+   - Manually paste address in the bar without waiting for announces
 
 ## Usage
 
 ### URL Formats Supported
+
 - `hash:/page/index.mu` - Direct hash with page path
 - `nomadnetwork://hash/page/index.mu` - Full protocol URL
 - `hash` - Hash only (defaults to `/page/index.mu`)
+- `:page/index.mu`field`content` - Pages with input field in URL (some unique customized urls can not always work)
 
 ### Navigation
+
 - **Address Bar**: Enter NomadNet URLs manually
 - **Back/Forward**: Navigate through browsing history
 - **Refresh**: Reload the current page
 - **Node Sidebar**: Click any discovered node to browse
 - **Link Clicking**: Click links within Micron content to navigate
+- **Add Favorites**: Save your favorite nodes and recall them later
 
-### View Modes
+### Pages View Mode:
+
 - **Rendered View**: Displays Micron markup with proper formatting
 - **Raw View**: Shows the original Micron source code
+
 
 ## Currently Implemented
 
@@ -117,6 +135,7 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **Web UI**: Implemented waitress and gunicorn production ready web servers, fallback to flask if missing.
 - ✅ **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
 - ✅ **User inputs support**: Form, URL, and input boxes sending user input are supported.
+
 
 ## Next Implementations:
 ### The following features are planned for the next version:
@@ -175,7 +194,8 @@ This project includes local versions of:
 - DOMPurify.min.js for html security
 
 The Web UI is served by:
-- Flask (developer web server)
+
+- Flask (developer web server, default if others are missing)
 - waitress (Production web server for windows)
 - gunicorn (Production web server for linux) 
 
@@ -186,4 +206,4 @@ External software and all their rights are owned by the respective developers.
 
 # rBrowser v1.0
 
-# Developed with love by Franky & Thomas 
+## Developed with love by Franky & Thomas 
