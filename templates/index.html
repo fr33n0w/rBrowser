@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>rBrowser v1.0 - Standalone NomadNet Page Browser</title>
+    <title>rBrowser v1.0 - Standalone NomadNet Browser</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -110,7 +110,7 @@
     </div>
 </template>
 
-    <!-- Load local DOMPurify js for security -->
+    <!-- Load local DOMPurify js for html security -->
     <script src="../script/purify.min.js"></script>
 
     <script>
@@ -134,7 +134,6 @@
         let lastNodesHash = '';
 
 
-// Tab class to manage individual tab state
 class BrowserTab {
     constructor(id) {
         this.id = id;
@@ -247,7 +246,6 @@ function createTabContent(tab) {
     const content = clone.querySelector('.tab-content');
     content.id = tab.id;
     
-    // Add event listeners to the cloned elements
     const backBtn = content.querySelector('.back-btn');
     const forwardBtn = content.querySelector('.forward-btn');
     const refreshBtn = content.querySelector('.refresh-btn');
@@ -270,11 +268,9 @@ function createTabContent(tab) {
 function switchToTab(tabId) {
     activeTabId = tabId;
     
-    // Remove active class from all tabs and content
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     
-    // Add active class to selected tab and content
     const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
     const contentElement = document.getElementById(tabId);
     
@@ -282,13 +278,11 @@ function switchToTab(tabId) {
         tabElement.classList.add('active');
         contentElement.classList.add('active');
         
-        // Update the active tab's state
         const activeTab = getActiveTab();
         if (activeTab) {
             activeTab.updateAddressBar();
             activeTab.updateNavigationButtons();
             
-            // IMMEDIATELY UPDATE NODE SELECTION
             updateNodeSelection();
         }
     }
@@ -302,19 +296,15 @@ function closeTab(tabId, event) {
     const tabIndex = tabs.findIndex(t => t.id === tabId);
     if (tabIndex === -1) return;
     
-    // Don't close if it's the only tab
     if (tabs.length === 1) {
         return;
     }
     
-    // Remove tab from array
     tabs.splice(tabIndex, 1);
     
-    // Remove DOM elements
     document.querySelector(`[data-tab-id="${tabId}"]`)?.remove();
     document.getElementById(tabId)?.remove();
     
-    // If this was the active tab, switch to another
     if (activeTabId === tabId) {
         const nextTab = tabs[Math.max(0, tabIndex - 1)];
         switchToTab(nextTab.id);
@@ -329,11 +319,9 @@ function showAddFavoriteDialog() {
     const input = prompt("Enter NomadNet address (hash:/path/to/page.mu or just hash for node):");
     if (!input) return;
     
-    // Try to extract hash and name
     let hash, name;
     
     if (input.includes(':')) {
-        // Full URL format
         const parsed = parseNomadNetUrl(input);
         if (parsed) {
             hash = parsed.hash;
@@ -347,7 +335,6 @@ function showAddFavoriteDialog() {
             return;
         }
     } else if (input.match(/^[a-fA-F0-9]{32}$/)) {
-        // Just a hash
         hash = input;
         name = prompt("Enter a name for this favorite:", `Custom Node (${hash.substring(0, 8)}...)`);
     } else {
@@ -361,7 +348,6 @@ function showAddFavoriteDialog() {
 
     if (!name) return;
 
-    // Check if already exists
     if (favoriteNodes.some(fav => fav.hash === hash)) {
         showNotification(
             "This node is already in your favorites",
@@ -371,12 +357,10 @@ function showAddFavoriteDialog() {
         return;
     }
     
-    // Add to favorites
     favoriteNodes.push({ hash: hash, name: name });
     saveFavorites();
     updateFavoritesDisplay();
-    updateNodes(); // Refresh to update star icons
-
+    updateNodes(); 
 }
 
 function addFavoriteFromUrl() {
@@ -484,12 +468,11 @@ async function navigateToUrlInternalTab(url, addHistory = true) {
 
     tab.setUrl(url);
     
-    // Refresh cached nodes before fetching page to get latest node names
     try {
         const response = await fetch('/api/nodes');
         const nodes = await response.json();
         cachedNodes = nodes;
-        console.log('Refreshed cached nodes for manual navigation:', cachedNodes.length, 'nodes');
+
     } catch (error) {
         console.warn('Failed to refresh cached nodes:', error);
     }
@@ -505,18 +488,15 @@ function toggleViewTab() {
     const toggle = document.querySelector(`#${tab.id} .view-toggle`);
     
     if (tab.isRawView) {
-        // Switch to rendered view
         const renderedHtml = parseMicronContent(tab.currentRawContent);
         content.innerHTML = renderedHtml;
         content.className = 'page-content';
         
-        // Re-add click handlers
         addClickHandlersToCurrentTab();
         
         toggle.textContent = 'Raw View';
         tab.isRawView = false;
     } else {
-        // Switch to raw view
         content.innerHTML = escapeHtml(tab.currentRawContent);
         content.className = 'page-content raw';
         toggle.textContent = 'Rendered View';
@@ -528,7 +508,6 @@ function toggleViewTab() {
 function showNotification(message, type = 'info', duration = 4000, stackPosition = null) {
     const notification = document.createElement('div');
     
-    // Different styles based on type
     const styles = {
         info: { bg: '#0969da', color: 'white' },
         warning: { bg: '#fb8500', color: 'white' },
@@ -537,11 +516,10 @@ function showNotification(message, type = 'info', duration = 4000, stackPosition
     };
     
     const style = styles[type] || styles.info;
-    
-    // Calculate position - if stackPosition is provided, stack notifications
+
     let bottomPosition = '40px';
     if (stackPosition !== null) {
-        bottomPosition = `${40 + (stackPosition * 90)}px`; // Stack with 80px spacing
+        bottomPosition = `${40 + (stackPosition * 90)}px`; 
     }
     
     notification.style.cssText = `
@@ -555,7 +533,6 @@ function showNotification(message, type = 'info', duration = 4000, stackPosition
     notification.innerHTML = message;
     document.body.appendChild(notification);
     
-    // Remove after specified duration
     setTimeout(() => {
         if (notification.parentNode) {
             notification.style.opacity = '0';
@@ -570,7 +547,6 @@ function showNotification(message, type = 'info', duration = 4000, stackPosition
     return notification;
 }
 
-// Function to show confirmation dialog with custom styling
 function showConfirmDialog(message, onConfirm, onCancel = null) {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
@@ -603,7 +579,6 @@ function showConfirmDialog(message, onConfirm, onCancel = null) {
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
     
-    // Add event listeners
     dialog.querySelector('#confirm-btn').addEventListener('click', () => {
         document.body.removeChild(overlay);
         onConfirm();
@@ -614,7 +589,6 @@ function showConfirmDialog(message, onConfirm, onCancel = null) {
         if (onCancel) onCancel();
     });
     
-    // Close on overlay click
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
             document.body.removeChild(overlay);
@@ -622,7 +596,6 @@ function showConfirmDialog(message, onConfirm, onCancel = null) {
         }
     });
     
-    // Close on Escape key
     const escapeHandler = (e) => {
         if (e.key === 'Escape') {
             document.removeEventListener('keydown', escapeHandler);
@@ -650,14 +623,12 @@ function addClickHandlersToCurrentTab() {
         
         console.log('Link clicked, href:', href, 'destination:', destination, 'fields:', fields);
         
-        // Check if it's a form submission (has data-fields)
         if (fields && destination) {
             console.log('Detected form submission link');
             handleFormSubmit(destination, fields);
             return;
         }
-        
-        // Check if it's a file download link
+
         if ((destination && destination.includes(':/file/')) || (href && href.includes(':/file/'))) {
             const fileUrl = destination || href;
             this.setAttribute('href', fileUrl);
@@ -670,7 +641,6 @@ function addClickHandlersToCurrentTab() {
             // Extract the LXMF address
             const lxmfAddress = destination.match(/lxmf@[a-fA-F0-9]+/)?.[0] || destination;
             
-            // Show warning notification at bottom
             showNotification(
                 "This is an LXMF address. Use official LXMF clients to open this link and chat with the peer (MeshChat, Sideband).",
                 'warning',
@@ -678,7 +648,6 @@ function addClickHandlersToCurrentTab() {
                 1
             );
             
-            // Copy to clipboard and show confirmation notification above it
             navigator.clipboard.writeText(lxmfAddress).then(() => {
                 setTimeout(() => {
                     showNotification(
@@ -687,9 +656,9 @@ function addClickHandlersToCurrentTab() {
                         6500,
                         0
                     );
-                }, 500); // Small delay
+                }, 500); 
             }).catch(() => {
-                // Fallback for older browsers
+
                 const textArea = document.createElement('textarea');
                 textArea.value = lxmfAddress;
                 document.body.appendChild(textArea);
@@ -725,7 +694,7 @@ function addClickHandlersToCurrentTab() {
             }
             
             showConfirmDialog(
-                `Open HTTP/HTTPS URL in a new browser window?<br><br><strong>URL:</strong> ${httpUrl}`,
+                `Open HTTP/HTTPS URL in a new window?<br><br><strong>URL:</strong> ${httpUrl}`,
                 () => {
                     window.open(httpUrl, '_blank', 'noopener,noreferrer');
                 }
@@ -733,7 +702,6 @@ function addClickHandlersToCurrentTab() {
             return;
         }
         
-        // Navigate to nomadnet link
         const urlToNavigate = destination || href;
         if (urlToNavigate) {
             navigateToLinkTab(urlToNavigate);
@@ -751,8 +719,6 @@ function navigateToLinkTab(url, addHistory = true) {
     const tab = getActiveTab();
     if (!tab) return;
    
-    console.log('navigateToLinkTab called with URL:', url);
-   
     const parsedCurrent = parseNomadNetUrl(tab.currentUrl);
     if (!parsedCurrent) {
         showNotification(
@@ -764,29 +730,24 @@ function navigateToLinkTab(url, addHistory = true) {
     }
     let parsed = parseNomadNetUrl(url);
     if (!parsed) {
-        // Handle relative URLs (starting with : or /)
         if (url.startsWith(':')) {
-            // Remove the leading : and construct full URL
             const relativePath = url.substring(1);
             const fullUrl = `${parsedCurrent.hash}:${relativePath}`;
             console.log('Constructed full URL from relative:', fullUrl);
             parsed = parseNomadNetUrl(fullUrl);
-            url = fullUrl; // Update url variable too
+            url = fullUrl; 
         } else if (url.startsWith('/')) {
-            // Path starts with /, construct full URL
             const fullUrl = `${parsedCurrent.hash}:${url}`;
             console.log('Constructed full URL from path:', fullUrl);
             parsed = parseNomadNetUrl(fullUrl);
-            url = fullUrl; // Update url variable too
+            url = fullUrl; 
         } else {
-            // Assume it's a relative path without leading /
             const fullUrl = `${parsedCurrent.hash}:/${url}`;
             console.log('Constructed full URL from relative path:', fullUrl);
             parsed = parseNomadNetUrl(fullUrl);
-            url = fullUrl; // Update url variable too
+            url = fullUrl; 
         }
     }
-    // Final check
     if (!parsed) {
         console.error('Failed to parse URL after all attempts:', url);
         return;
@@ -799,7 +760,6 @@ function navigateToLinkTab(url, addHistory = true) {
    
     tab.setUrl(url);
     
-    // Check if URL contains form data (from backtick variables)
     if (parsed.formData && Object.keys(parsed.formData).length > 0) {
         console.log('URL contains form data, submitting:', parsed.formData);
         console.log('About to call submitFormData with:', {
@@ -808,10 +768,8 @@ function navigateToLinkTab(url, addHistory = true) {
             data: parsed.formData
         });
         
-        // Submit form data instead of regular fetch
         submitFormData(parsed.hash, parsed.path, parsed.formData);
     } else {
-        // Regular navigation without form data
         fetchPageByUrlTab(parsed.hash, parsed.path, url);
     }
 }
@@ -820,7 +778,6 @@ function navigateHome() {
     const tab = getActiveTab();
     if (!tab) return;
     
-    // Check if we have a current URL to extract the node hash from
     const currentParsed = parseNomadNetUrl(tab.currentUrl);
     if (!currentParsed) {
         showNotification(
@@ -831,7 +788,6 @@ function navigateHome() {
         return;
     }
     
-    // Navigate to the home page of the current node
     const homeUrl = `${currentParsed.hash}:/page/index.mu`;
     console.log('Navigating to home:', homeUrl);
     
@@ -841,7 +797,6 @@ function navigateHome() {
     navigateToUrlInternalTab(homeUrl, true);
 }
 
-// Also add the home button functionality to existing tabs
 function addHomeButtonToExistingTabs() {
     document.querySelectorAll('.nav-controls').forEach(navControls => {
         if (!navControls.querySelector('.home-btn')) {
@@ -868,10 +823,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
     tab.selectedNode = hash;
     tab.setLoading(true);
 
-    // Get the node name for the CURRENT hash, not the stored one
     const nodeName = getNodeName(hash);
-    
-    // Update the tab's known node name to the current node
     tab.knownNodeName = nodeName;
     
     const pageTitle = document.querySelector(`#${tab.id} .page-title`);
@@ -891,10 +843,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
     if (viewToggle) viewToggle.style.display = 'none';
     if (addressBar) addressBar.value = originalUrl;
     
-    // Update tab title to show we're loading the new node
     tab.setTitle(`Loading ${nodeName}...`);
     
-    // Update selected node in sidebar
     document.querySelectorAll('.node-item').forEach(item => item.classList.remove('selected'));
     const nodeItem = document.querySelector(`[data-hash="${hash}"]`);
     if (nodeItem) {
@@ -932,7 +882,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                         viewToggle.textContent = 'Raw View';
                     }
                     
-                    // Set the final tab title to the current node name
                     tab.setTitle(nodeName);
                     addClickHandlersToCurrentTab();
                     
@@ -960,20 +909,17 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         });
 }
 
-        // Get Node Name function
         function getNodeName(hash) {
             console.log('Looking for hash:', hash);
             console.log('Cached nodes available:', cachedNodes.length);
-    
-            // First try to find in DOM
+
             const nodeItem = document.querySelector(`[data-hash="${hash}"]`);
             if (nodeItem) {
                 const nodeName = nodeItem.getAttribute('data-name');
                 console.log('Getting node name for hash:', hash, '-> Name (from DOM):', nodeName);
                 return nodeName;
             }
-    
-            // If not in DOM, check cached nodes data
+
             const cachedNode = cachedNodes.find(node => {
                 console.log('Comparing:', hash, 'vs', node.hash);
                 return node.hash === hash;
@@ -988,12 +934,10 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             return hash;
         }
 
-        // Initialize MicronParser
         async function initializeMicronParser() {
             try {
                 console.log('Initializing MicronParser...');
                 
-                // Load the original micron parser script
                 await new Promise((resolve, reject) => {
                     const script = document.createElement('script');
                     script.src = './script/micron-parser_original.js';
@@ -1002,10 +946,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     document.head.appendChild(script);
                 });
                 
-                // Wait for script to execute
                 await new Promise(resolve => setTimeout(resolve, 200));
-                
-                // Try to initialize the parser
+
                 if (typeof window.MicronParser === 'function') {
                     micronParser = new window.MicronParser(true, true);
                     isOriginalParser = true;
@@ -1024,15 +966,13 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             return {
                 convertMicronToHtml: function(text) {
                     let html = text;
-                    
-                    // Basic Micron formatting (simplified)
+
                     html = html.replace(/`!([^`]*)`!/g, '<strong style="color: #58a6ff; font-weight: bold;">$1</strong>');
                     html = html.replace(/`\*([^`]*)`\*/g, '<em style="color: #ffa657; font-style: italic;">$1</em>');
                     html = html.replace(/`_([^`]*)`_/g, '<span style="text-decoration: underline; color: #79c0ff;">$1</span>');
                     html = html.replace(/^>([^\n]*)/gm, '<div style="color: #58a6ff; font-weight: bold; font-size: 18px; margin: 16px 0 8px 0; border-bottom: 1px solid #30363d; padding-bottom: 4px;">$1</div>');
                     html = html.replace(/\n/g, '<br>');
-                    
-                    // Escape HTML
+
                     html = escapeHtml(html);
                     
                     return `<div style="font-family: 'Courier New', 'Liberation Mono', 'DejaVu Sans Mono', Courier, monospace; line-height: 1.6;">${html}</div>`;
@@ -1048,10 +988,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             if (micronParser) {
                 let html = micronParser.convertMicronToHtml(content);
                 
-                // Add form field support AFTER Micron parsing
                 html = addFormFieldSupport(html);
                 
-                // Add click handlers to any links that the original parser created
                 html = addClickHandlersToLinks(html);
                 
                 console.log('Micron parsing complete');
@@ -1065,7 +1003,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         function addFormFieldSupport(html) {
             console.log('Searching for form elements in HTML...');
             
-            // Let's search for specific text patterns that might indicate fields/buttons
             if (html.includes('ref')) {
                 console.log('Found "ref" in HTML');
                 const refIndex = html.indexOf('ref');
@@ -1084,7 +1021,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 console.log('Context around "version":', html.substring(versionIndex - 100, versionIndex + 100));
             }
             
-            // Also let's see if there are any existing links we can modify
             const linkMatches = html.match(/<a[^>]*>.*?<\/a>/g);
             if (linkMatches) {
                 console.log('Found links:', linkMatches);
@@ -1099,7 +1035,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             
             console.log('handleFormSubmit called with path:', path, 'fields:', fieldsSpec);
             
-            // Parse current URL to get node hash
             const currentParsed = parseNomadNetUrl(tab.currentUrl);
             if (!currentParsed) {
                 showNotification('Cannot submit form - no current node context', 'error', 4000);
@@ -1108,7 +1043,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             
             console.log('Current node hash:', currentParsed.hash);
             
-            // FIRST: Extract any backtick parameters from the path itself
             let cleanPath = path;
             let pathBacktickData = {};
             
@@ -1130,7 +1064,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             console.log('Path backtick data:', pathBacktickData);
             console.log('Clean path:', cleanPath);
             
-            // Collect form data from current page
             const formData = {};
             const inputs = document.querySelectorAll(`#${tab.id} .page-content input[name], #${tab.id} .page-content textarea[name]`);
             
@@ -1142,9 +1075,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             
             console.log('Collected form data:', formData);
             
-            // Parse fields specification
             const fields = fieldsSpec.split('|').filter(f => f.trim());
-            let submitData = { ...pathBacktickData }; // Start with path backtick data
+            let submitData = { ...pathBacktickData }; 
             
             fields.forEach(field => {
                 const trimmedField = field.trim();
@@ -1164,7 +1096,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             
             console.log('Final merged submit data:', submitData);
             
-            // Submit form data with clean path (no backticks)
             submitFormData(currentParsed.hash, cleanPath, submitData);
         }
 
@@ -1175,14 +1106,12 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             console.log('submitFormData called with:', {nodeHash, path, data});
             console.log('Data object size:', Object.keys(data).length, 'parameters');
             
-            // Don't add form data to URL - keep the path clean
             const cleanPath = path.startsWith(':') ? path.substring(1) : path;
             const fullUrl = `${nodeHash}:${cleanPath}`;
             
             console.log('Final URL to navigate to:', fullUrl);
             console.log('Form data to submit:', data);
             
-            // Navigate with form data as separate parameter
             navigateToUrlInternalTabWithFormData(fullUrl, data, true);
         }
 
@@ -1206,29 +1135,24 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
 
             tab.setUrl(url);
             
-            // Fetch page with form data
             fetchPageByUrlTabWithFormData(parsed.hash, parsed.path, url, formData);
         }
 
         function addClickHandlersToLinks(html) {
-            // Find existing <a> tags and add navigation handlers if they look like NomadNet URLs
             return html.replace(/<a([^>]*?)href=["']([^"']*?)["']([^>]*?)>/g, function(match, before, href, after) {
-                // Check if it's a NomadNet URL format
                 if (isNomadNetUrl(href)) {
                     const url = normalizeNomadNetUrl(href);
                     return `<a${before} href="#" class="nomadnet-link" onclick="navigateToNomadNetUrl('${url}'); return false;" title="Navigate to ${url}"${after}>`;
                 }
-                return match; // Keep other links as-is
+                return match; 
             });
         }
 
         function isNomadNetUrl(url) {
-            // Check if URL looks like a NomadNet URL
             return url.match(/^(nomadnetwork:\/\/|[a-fA-F0-9<>:]{32,}[:\/])/);
         }
 
         function normalizeNomadNetUrl(url) {
-            // Convert various formats to our standard format: hash:/path
             if (url.startsWith('nomadnetwork://')) {
                 const match = url.match(/nomadnetwork:\/\/([a-fA-F0-9<>:]+)(\/.*)?/);
                 if (match) {
@@ -1253,27 +1177,22 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         function parseNomadNetUrl(url) {
             console.log('Parsing URL:', url);
         
-            // Clean up common URL prefixes
             url = url.replace(/^nomadnetwork:\/\//, '');
         
-            // Match hash and optional path (including parameters after backtick)
             const match = url.match(/^([a-fA-F0-9<>:]{32,})(?:[:\/](.*))?$/);
             if (match) {
                 const cleanHash = match[1].replace(/[<>:]/g, '');
                 let path = match[2];
             
-                // Default to index page if no path
                 if (!path || path === '') {
                     path = 'page/index.mu';
                 }
-            
-                // Handle backtick variables
+
                 let formData = {};
                 if (path.includes('`')) {
                     const [pathPart, varsPart] = path.split('`', 2);
                     path = pathPart;
                     
-                    // Parse variables after backtick
                     if (varsPart) {
                         const vars = varsPart.split('|');
                         for (const varPair of vars) {
@@ -1285,7 +1204,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     }
                 }
             
-                // Ensure path starts with /
                 if (!path.startsWith('/')) {
                     path = '/' + path;
                 }
@@ -1320,7 +1238,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             navigateBackTab();
         }
 
-        // REPLACE your original navigateForward function:
         function navigateForward() {
             navigateForwardTab();
         }
@@ -1362,18 +1279,14 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     return r.json();
                 })
                 .then(nodes => {
-                    // Reset any node fetch failure tracking if you want to add it
                     
-                    // Create a hash to detect actual changes (ignoring just time updates)
                     const nodesHash = JSON.stringify(nodes.map(n => ({
                         hash: n.hash, 
                         name: n.name,
                         app_data_length: n.app_data_length
                     })));
                     
-                    // Only rebuild DOM if nodes actually changed (not just time updates)
                     if (nodesHash === lastNodesHash) {
-                        // Just update the time-sensitive parts
                         nodes.forEach(node => {
                             const nodeItem = document.querySelector(`[data-hash="${node.hash}"]`);
                             if (nodeItem) {
@@ -1391,10 +1304,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     lastNodesHash = nodesHash;
                     console.log('Node list changed, rebuilding DOM');
                     
-                    // Your existing DOM rebuild code continues here...
                     cachedNodes = nodes;
                     console.log('Cached nodes updated:', cachedNodes.length, 'nodes');
-                    console.log('First cached node hash example:', cachedNodes.length > 0 ? cachedNodes[0].hash : 'none');
                     const list = document.getElementById('node-list');
                     const searchTerm = document.getElementById('node-search').value.toLowerCase();
 
@@ -1455,45 +1366,37 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 })
                 .catch(error => {
                     console.warn('Nodes API error:', error);
-                    // Keep existing nodes display on error rather than clearing it
                 });
         }
 
         function updateStatus() {
-            // Handle announce count and node count separately with independent error handling
             fetch('/api/status')
                 .then(r => {
                     if (!r.ok) throw new Error(`HTTP ${r.status}`);
                     return r.json();
                 })
                 .then(data => {
-                    // Update announce count successfully
                     document.getElementById('announce-count').textContent = data.total_announces;
-                    // Note: We don't reset statusFetchFailures here since this is a different endpoint
                 })
                 .catch(error => {
                     console.warn('Basic status API error:', error);
-                    // Don't affect connection status error tracking - these are separate concerns
                 });
             
-            // Handle connection status with dedicated error tracking
             fetch('/api/connection-status')
                 .then(r => {
                     if (!r.ok) throw new Error(`HTTP ${r.status}`);
                     return r.json();
                 })
                 .then(data => {
-                    // SUCCESSFUL RESPONSE - Reset all failure tracking
+
                     const wasInErrorState = statusFetchFailures >= maxStatusFailures;
                     statusFetchFailures = 0;
                     lastStatusFetch = Date.now();
-                    
-                    // If we were previously in error state, log the recovery
+
                     if (wasInErrorState) {
                         console.log('Backend connection recovered! Status:', data.status);
                     }
-                    
-                    // Update status display with received data
+
                     updateConnectionStatus(data.status, data.message, data.color);
                 })
                 .catch(error => {
@@ -1502,36 +1405,27 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     
                     console.warn(`Connection status fetch failed (${statusFetchFailures}/${maxStatusFailures}):`, error);
                     
-                    // Only show connection error after multiple consecutive failures
                     if (statusFetchFailures >= maxStatusFailures) {
                         updateConnectionStatus('connerror', 'Error! Python script stopped?', 'red');
                     } else {
-                        // During the failure buildup, show a "checking" status instead of keeping stale status
                         if (statusFetchFailures === 1) {
                             updateConnectionStatus('waiting', 'Checking connection...', 'yellow');
                         } else if (statusFetchFailures === 2) {
                             updateConnectionStatus('waiting', 'Retrying connection check...', 'yellow');
                         }
-                        // For statusFetchFailures === 3, it will hit the >= maxStatusFailures condition above
                     }
                 });
         }
 
         function forceStatusUpdate() {
-            console.log('🔄 Forcing immediate status update...');
-            
-            // Reset failure counter to give backend a chance
-            statusFetchFailures = 0;
-            
-            // Call updateStatus immediately
+            console.log('🔄 Forcing immediate status update...');            
+            statusFetchFailures = 0;            
             updateStatus();
         }
 
         function updateConnectionStatus(status, message, color) {
-            // Use ID selector instead of class to avoid the class replacement issue
             const statusElement = document.getElementById('connection-status') || document.querySelector('.status-indicator');
             if (statusElement) {
-                // Keep a base class and add the status class
                 statusElement.className = `status-indicator ${status}`;
                 statusElement.innerHTML = `<strong style="color: ${getStatusColor(color)};"> ● ${message}</strong>`;
             }
@@ -1553,19 +1447,15 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             const currentTab = getActiveTab();
             let targetTab;
             
-            // Check if current tab is empty (new tab with default content)
             if (currentTab && currentTab.title === 'New Tab' && !currentTab.currentUrl) {
-                // Use existing empty tab
                 targetTab = currentTab;
             } else {
-                // Create new tab if current tab has content
                 targetTab = createNewTab();
             }
             
             const addressBar = document.querySelector(`#${targetTab.id} .address-bar`);
             if (addressBar) addressBar.value = url;
             
-            // Store the known name in the target tab
             targetTab.knownNodeName = name;
             
             navigateToUrlInternalTab(url, true);
@@ -1581,7 +1471,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         const downloadUrl = `/api/download/${nodeHash}?path=${encodeURIComponent(filePath)}`;
         const filename = filePath.split('/').pop();
         
-        // Create notification element with progress bar
         const notification = document.createElement('div');
         notification.style.cssText = `
             position: fixed; bottom: 60px; right: 60px; z-index: 10000;
@@ -1604,7 +1493,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         const progressBar = notification.querySelector('#progress-bar');
         const progressText = notification.querySelector('#progress-text');
         
-        // Fetch with progress tracking
         fetch(downloadUrl)
             .then(response => {
                 if (!response.ok) throw new Error('Download failed');
@@ -1612,8 +1500,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 const contentLength = response.headers.get('Content-Length');
                 const total = parseInt(contentLength, 10);
                 let loaded = 0;
-                
-                // If no content length, we can't show progress
+
                 if (!total) {
                     progressText.textContent = 'Downloading... (size unknown)';
                     return response.blob();
@@ -1631,8 +1518,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                                 
                                 loaded += value.byteLength;
                                 const progress = (loaded / total * 100).toFixed(1);
-                                
-                                // Update progress bar and text
+
                                 progressBar.style.width = progress + '%';
                                 progressText.textContent = `${progress}% (${formatFileSize(loaded)} / ${formatFileSize(total)})`;
                                 
@@ -1647,13 +1533,11 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 return new Response(stream).blob();
             })
             .then(blob => {
-                // Update notification for completion
                 notification.style.borderColor = '#1a1a1a';
                 progressBar.style.background = '#7c3aed';
                 progressText.textContent = 'Download completed!';
                 notification.querySelector('div').innerHTML = `✅ Downloaded ${filename}`;
                 
-                // Create download link
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
@@ -1663,8 +1547,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 link.click();
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
-                
-                // Remove notification after delay
+
                 setTimeout(() => {
                     if (notification.parentNode) {
                         notification.parentNode.removeChild(notification);
@@ -1672,7 +1555,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 }, 3000);
             })
             .catch(error => {
-                // Show error
                 notification.style.borderColor = '#1a1a1a';
                 progressBar.style.background = '#ff7b72';
                 progressText.textContent = 'Download failed!';
@@ -1686,7 +1568,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             });
     }
 
-    // Helper function to format file sizes
     function formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -1695,7 +1576,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }        
 
-    // Parse nomadnet:// URLs and convert to download links
     function parseFileURL(url) {
         
         let nodeHash = '';
@@ -1714,18 +1594,14 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         return { nodeHash, filePath };
     }
 
-    // Add click handlers for file links in the rendered content
     function addFileDownloadHandlers() {
         const tab = getActiveTab();
         if (!tab) return;
         
-        // Look for file links in the current tab's content
         const fileLinks = document.querySelectorAll(`#${tab.id} .page-content a[href*=":/file/"]`);
         
         fileLinks.forEach(link => {
-            // Remove any existing click handlers
             link.removeEventListener('click', handleFileClick);
-            // Add new click handler
             link.addEventListener('click', handleFileClick);
         });
     }
@@ -1737,17 +1613,14 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         
         if (!tab) return;
         
-        // Parse the file URL
         const parsed = parseFileURL(href);
         let nodeHash = parsed.nodeHash;
         let filePath = parsed.filePath;
-        
-        // If no node hash in the URL, use current tab's node
+
         if (!nodeHash && tab.selectedNode) {
             nodeHash = tab.selectedNode;
         }
-        
-        // If still no node hash, try to extract from current URL
+
         if (!nodeHash && tab.currentUrl) {
             const currentParsed = parseNomadNetUrl(tab.currentUrl);
             if (currentParsed) {
@@ -1783,7 +1656,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 }
             });
     
-            // Update visible count
             const visibleNodes = document.querySelectorAll('.node-item[style*="block"], .node-item:not([style*="none"])').length;
             if (searchTerm) {
                 console.log(`Filtered to ${visibleNodes} nodes matching "${searchTerm}"`);
@@ -1807,8 +1679,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             
             searchInput.value = '';
             clearButton.style.display = 'none';
-            filterNodes(); // Reapply filter (which will show all nodes)
-            searchInput.focus(); // Keep focus on search input
+            filterNodes(); 
+            searchInput.focus(); 
         }
 
         function loadFavorites() {
@@ -1816,7 +1688,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             favoriteNodes = stored ? JSON.parse(stored) : [];
             updateFavoritesDisplay();
             
-            // Start with favorites list closed
             const list = document.getElementById('favorites-list');
             const button = document.getElementById('favorites-toggle');
             if (list && button) {
@@ -1836,8 +1707,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             if (existing >= 0) {
                 favoriteNodes.splice(existing, 1);
                 console.log('Removed favorite, new count:', favoriteNodes.length);
-                
-                // Immediately update the star appearance
+
                 const starBtn = document.querySelector(`[data-hash="${hash}"].star-btn`);
                 if (starBtn) {
                     starBtn.style.color = '#7d8590';
@@ -1847,8 +1717,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             } else {
                 favoriteNodes.push({ hash: hash, name: name });
                 console.log('Added favorite, new count:', favoriteNodes.length);
-                
-                // Immediately update the star appearance
+
                 const starBtn = document.querySelector(`[data-hash="${hash}"].star-btn`);
                 if (starBtn) {
                     starBtn.style.color = '#ffa657';
@@ -1858,7 +1727,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
 
             saveFavorites();
             updateFavoritesDisplay();
-            // updateNodes(); // You can remove this line if you don't want to wait for the refresh
         }
 
         function updateFavoritesDisplay() {
@@ -1905,7 +1773,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 console.log('Removed favorite, new count:', favoriteNodes.length);
                 saveFavorites();
                 updateFavoritesDisplay();
-                updateNodes(); // Refresh to update star icons
+                updateNodes(); 
             }
         }
 
@@ -1913,17 +1781,14 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             const tab = getActiveTab();
             if (!tab) return;
             
-            // Set up the page loading UI
             tab.setLoading(true);
             const nodeName = tab.knownNodeName || getNodeName(hash);
-            
-            // Show loading state
+
             const pageContent = document.querySelector(`#${tab.id} .page-content`);
             if (pageContent) {
                 pageContent.innerHTML = `<div style="color: #58a6ff; text-align: center; padding: 40px;">Submitting form...<br><br><strong>${nodeName}</strong></div>`;
             }
-            
-            // Send POST request with form data
+
             fetch(`/api/fetch/${hash}?path=${encodeURIComponent(path)}`, {
                 method: 'POST',
                 headers: {
@@ -1934,7 +1799,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             .then(r => r.json())
             .then(response => {
                 if (response.status === 'success') {
-                    // Handle successful response same as regular page loading
                     tab.currentRawContent = response.content;
                     const renderedHtml = parseMicronContent(response.content);
                     if (pageContent) pageContent.innerHTML = renderedHtml;
@@ -1951,7 +1815,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         }
 
         document.addEventListener('keydown', (e) => {
-            // Tab navigation with left/right arrows (with Ctrl/Cmd)
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
                 switch (e.key) {
                     case 'ArrowLeft':
@@ -1993,7 +1856,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             }
         });
 
-        // Add these new functions for tab navigation:
         function switchToPreviousTab() {
             if (tabs.length <= 1) return;
             
@@ -2011,22 +1873,18 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         }
 
         function closeOtherTabs() {
-            if (tabs.length <= 1) return; // Nothing to close if only one tab
+            if (tabs.length <= 1) return; 
             
             const currentActiveTab = getActiveTab();
             if (!currentActiveTab) return;
             
-            // Create array of tabs to close (all except active)
             const tabsToClose = tabs.filter(tab => tab.id !== activeTabId);
             
-            // Close all other tabs
             tabsToClose.forEach(tab => {
-                // Remove DOM elements
                 document.querySelector(`[data-tab-id="${tab.id}"]`)?.remove();
                 document.getElementById(tab.id)?.remove();
             });
             
-            // Update tabs array to only contain the active tab
             tabs = [currentActiveTab];
             
             console.log('Closed all tabs except active tab:', currentActiveTab.title);
@@ -2036,10 +1894,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             const activeTab = getActiveTab();
             if (!activeTab || !activeTab.selectedNode) return;
             
-            // Remove selected class from all nodes
             document.querySelectorAll('.node-item').forEach(item => item.classList.remove('selected'));
-            
-            // Add selected class to the current tab's node
+
             const nodeItem = document.querySelector(`[data-hash="${activeTab.selectedNode}"]`);
             if (nodeItem) {
                 nodeItem.classList.add('selected');
@@ -2048,10 +1904,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
 
         function copyHashToClipboard(hash) {
             navigator.clipboard.writeText(hash).then(() => {
-                // Show a brief confirmation
                 showCopyConfirmation();
             }).catch(err => {
-                // Fallback for older browsers
                 const textArea = document.createElement('textarea');
                 textArea.value = hash;
                 document.body.appendChild(textArea);
@@ -2067,13 +1921,11 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         }
 
         function showNodeInfo(hash, name, lastSeen, dataLength, announceCount, relativeTime) {
-            // Get node-specific announce count from cached nodes
             const nodeData = cachedNodes.find(n => n.hash === hash);
             const hops = nodeData ? nodeData.hops : 'Unknown';
             const nextHopInterface = nodeData ? nodeData.next_hop_interface : 'Unknown';
             const nodeAnnounceCount = nodeData ? nodeData.node_announce_count : 'Unknown';
-    
-            // Create detailed info popup
+
             const notification = document.createElement('div');
             notification.style.cssText = `
                 position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10000;
@@ -2082,8 +1934,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 box-shadow: 0 8px 24px rgba(0,0,0,0.5); min-width: 350px; max-width: 500px;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             `;
-            
-            // Format timestamp if available
+
             let formattedTime = 'Unknown';
             if (lastSeen && lastSeen !== 'undefined') {
                 try {
@@ -2122,8 +1973,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             `;
             
             document.body.appendChild(notification);
-            
-            // Auto-remove info blob after 30 seconds
+
             setTimeout(() => {
                 if (notification.parentNode) {
                     notification.parentNode.removeChild(notification);
@@ -2131,15 +1981,13 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             }, 30000);
         }
 
-        // Initialize everything when page loads (DOMContentLoaded)
     document.addEventListener('DOMContentLoaded', async function() {
         console.log('NomadNet Browser starting...');
         await initializeMicronParser();
         loadFavorites();
-        
-        // ADD EVENT DELEGATION HERE - prevents click refresh glitch
+
         document.getElementById('node-list').addEventListener('click', function(e) {
-            // Handle info button clicks
+
             if (e.target.classList.contains('info-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -2155,7 +2003,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 return;
             }
             
-            // Handle star button clicks
             if (e.target.classList.contains('star-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -2165,8 +2012,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 toggleFavorite(hash, name);
                 return;
             }
-        
-            // Handle node item clicks
+
             const nodeItem = e.target.closest('.node-item');
             if (nodeItem && !e.target.closest('.star-btn') && !e.target.closest('.info-btn') && !e.target.closest('.copy-icon')) {
                 const hash = nodeItem.getAttribute('data-hash');
@@ -2175,28 +2021,23 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             }
         });
 
-        // CREATE FIRST TAB
         createNewTab();
 
-        // ENHANCED polling with recovery logic
         setInterval(() => {
             updateNodes();
             updateStatus();
-            
-            // If we're in error state, occasionally try to recover faster
+
             if (statusFetchFailures >= maxStatusFailures) {
-                // Every 5th poll (15 seconds), try an immediate recovery attempt
-                if (Math.random() < 0.2) {  // 20% chance = roughly every 15 seconds
+                if (Math.random() < 0.2) {  
                     console.log('Attempting connection recovery...');
                     setTimeout(() => {
-                        statusFetchFailures = Math.max(0, statusFetchFailures - 1); // Reduce failure count slightly
+                        statusFetchFailures = Math.max(0, statusFetchFailures - 1); 
                         updateStatus();
-                    }, 1000); // Try again in 1 second
+                    }, 1000); 
                 }
             }
         }, 2000);
 
-        // Initial load
         updateNodes();
         updateStatus();
 

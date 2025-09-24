@@ -127,8 +127,9 @@ This browser automatically discovers NomadNet nodes through network announces an
 
 ## Known Issues:
 
-- Input box parameter sending is failing due to the user customization  on some nodes with non-standard nomadnet micron format. (90% of the nodes are perfectly working!)
-- Code needs a super clean-up :D
+- Input box parameter sending is failing on some nodes with non-standard nomadnet micron format. due to the user fields customization  (95% of the nodes are perfectly working!)
+
+If you find bugs, feel free to contact the developer on Reticulum at: LXMF Address: 0d051f3b6f844380c3e0c5d14e37fac8
 
 -----
 
