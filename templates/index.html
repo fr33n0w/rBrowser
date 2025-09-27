@@ -476,8 +476,24 @@ function addFavoriteFromUrl() {
     favoriteNodes.push({ hash: parsed.hash, name: name });
     saveFavorites();
     updateFavoritesDisplay();
+    
+    // ADD: Update node list star
+    const nodeStarBtn = document.querySelector(`[data-hash="${parsed.hash}"].star-btn`);
+    if (nodeStarBtn) {
+        nodeStarBtn.style.color = '#ffa657';
+        nodeStarBtn.textContent = '★';
+    }
+    
     updateNodes();
+    
+    // ADD: Update nav bar star button state
+    updateStarButtonState();
 
+    showNotification(
+        `Added "${name}" to favorites!`,
+        'success',
+        4000
+    );
 }
 
 // Navigation bar
@@ -716,6 +732,14 @@ function addClickHandlersToCurrentTab() {
             return;
         }
         
+        // Check if this is a NomadNet URL with parameters (even if it contains HTTP)
+        const urlToCheck = destination || href;
+        if (isNomadNetUrlWithParams(urlToCheck)) {
+            console.log('Detected NomadNet URL with parameters:', urlToCheck);
+            navigateToLinkTab(urlToCheck);
+            return;
+        }
+        
         // Handle other link types with notifications
         if (destination && destination.includes('lxmf@')) {
             // Extract the LXMF address
@@ -738,7 +762,6 @@ function addClickHandlersToCurrentTab() {
                     );
                 }, 500); 
             }).catch(() => {
-
                 const textArea = document.createElement('textarea');
                 textArea.value = lxmfAddress;
                 document.body.appendChild(textArea);
@@ -758,7 +781,6 @@ function addClickHandlersToCurrentTab() {
             return;
         }
 
-
         if (destination && destination.includes('[')) {
             showNotification(
                 "Error! This is not a valid link or address!",
@@ -767,7 +789,8 @@ function addClickHandlersToCurrentTab() {
             return;
         }
 
-        if (destination && (destination.includes('http://') || destination.includes('https://'))) {
+        // Now check for standalone HTTP URLs (not part of NomadNet URLs)
+        if (destination && isStandaloneHttpUrl(destination)) {
             let httpUrl = destination;
             if (destination.startsWith('nomadnetwork://')) {
                 httpUrl = destination.replace('nomadnetwork://', '');
@@ -787,12 +810,48 @@ function addClickHandlersToCurrentTab() {
             navigateToLinkTab(urlToNavigate);
         }
     }
-
     links.forEach(link => {
         link.addEventListener('click', handleClick);
     });
     
     addFileDownloadHandlers();
+}
+
+function isNomadNetUrlWithParams(url) {
+    // Check if it's a NomadNet URL format with backtick parameters
+    // Examples: hash:/page/web.mu`url=https://example.com
+    //          /page/web.mu`url=https://example.com
+    
+    if (!url) return false;
+    
+    // Check for backtick indicating parameters
+    if (url.includes('`')) {
+        // Split at backtick to get the base path
+        const basePath = url.split('`')[0];
+        
+        // Check if base path looks like a NomadNet URL
+        return (
+            basePath.match(/^[a-fA-F0-9<>:]{32,}[:\/]/) ||  // Full hash format
+            basePath.startsWith('/page/') ||                 // Relative page path
+            basePath.startsWith(':') ||                      // Relative with colon
+            basePath.match(/\.mu$/)                          // Ends with .mu
+        );
+    }
+    
+    return false;
+}
+
+function isStandaloneHttpUrl(url) {
+    // Check if it's a standalone HTTP URL (not part of NomadNet parameters)
+    if (!url) return false;
+    
+    // If it contains a backtick, it's likely a NomadNet URL with parameters
+    if (url.includes('`')) {
+        return false;
+    }
+    
+    // Check for HTTP/HTTPS URLs
+    return url.includes('http://') || url.includes('https://');
 }
 
 function navigateToLinkTab(url, addHistory = true) {
