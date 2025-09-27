@@ -1462,6 +1462,36 @@ def api_search_cache():
     
     return jsonify(results)
 
+@app.route('/templates/go.png')
+def serve_go_icon():
+    """Serve the go icon"""
+    try:
+        template_path = get_resource_path('templates') if 'get_resource_path' in globals() else 'templates'
+        return send_from_directory(template_path, 'go.png', mimetype='image/png')
+    except Exception as e:
+        print(f"❌ Error serving star icon: {e}")
+        return "", 404
+
+@app.route('/templates/star.png')
+def serve_star_icon():
+    """Serve the star icon"""
+    try:
+        template_path = get_resource_path('templates') if 'get_resource_path' in globals() else 'templates'
+        return send_from_directory(template_path, 'star.png', mimetype='image/png')
+    except Exception as e:
+        print(f"❌ Error serving star icon: {e}")
+        return "", 404
+
+@app.route('/templates/fingerprint.png')
+def serve_fingerprint_icon():
+    """Serve the fingerprint icon"""
+    try:
+        template_path = get_resource_path('templates') if 'get_resource_path' in globals() else 'templates'
+        return send_from_directory(template_path, 'fingerprint.png', mimetype='image/png')
+    except Exception as e:
+        print(f"❌ Error serving fingerprint icon: {e}")
+        return "", 404
+
 @app.route('/api/cache-settings', methods=['GET', 'POST'])
 def api_cache_settings():
     if request.method == 'GET':

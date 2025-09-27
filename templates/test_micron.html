@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Micron Parser Test - With DOMPurify</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: #0d1117; 
+            color: #e6edf3; 
+            margin: 20px; 
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { 
+            background: #161b22; 
+            border: 1px solid #30363d; 
+            border-radius: 8px; 
+            padding: 20px; 
+            margin: 20px 0; 
+        }
+        .section h2 { 
+            color: #58a6ff; 
+            margin-top: 0; 
+            border-bottom: 1px solid #30363d; 
+            padding-bottom: 10px; 
+        }
+        .test-input { 
+            width: 100%; 
+            height: 150px; 
+            background: #21262d; 
+            color: #e6edf3; 
+            border: 1px solid #30363d; 
+            padding: 15px; 
+            font-family: 'SF Mono', Monaco, monospace; 
+            font-size: 13px;
+            border-radius: 6px;
+            resize: vertical;
+        }
+        .output-area { 
+            background: #0d1117; 
+            border: 1px solid #30363d; 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 6px;
+            min-height: 100px; 
+        }
+        .controls { 
+            margin: 15px 0; 
+            display: flex; 
+            gap: 10px; 
+            align-items: center;
+        }
+        button { 
+            background: #0969da; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1f6feb; }
+        .status { 
+            background: #21262d; 
+            padding: 15px; 
+            border-radius: 6px; 
+            font-family: 'SF Mono', Monaco, monospace; 
+            font-size: 12px;
+            border-left: 4px solid #58a6ff;
+        }
+        .error { 
+            color: #ff7b72; 
+            background: #490202; 
+            border-left-color: #da3633;
+        }
+        .success { 
+            color: #3fb950; 
+            background: #0d4a1f; 
+            border-left-color: #2ea043;
+        }
+        .warning { 
+            color: #ffa657; 
+            background: #4a2c00; 
+            border-left-color: #fb8500;
+        }
+        .debug-entry {
+            margin: 5px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #30363d;
+        }
+        .toggle-group {
+            display: flex;
+            gap: 5px;
+        }
+        .toggle-group button {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .toggle-group button.active {
+            background: #238636;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Micron Parser Test - With DOMPurify</h1>
+        
+        <div class="section">
+            <h2>Parser Status</h2>
+            <div id="parser-status" class="status">
+                Initializing...
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Test Input</h2>
+            <textarea class="test-input" id="micron-input">`!Welcome to NomadNet!`!
+
+This is a test of the `*micron markup`* system.
+
+`F0f0`*Colored text works like this*`f
+
+`c`B333 Centered text with background `b
+`a
+
+>Main Section
+This text is inside a section.
+>>Subsection
+Even deeper nesting works.
+
+`!Important:`! You can use `_underlined`_ text too.
+
+- This is a horizontal divider above
+`F00f`B222 Red text on gray background `f`b</textarea>
+            
+            <div class="controls">
+                <button onclick="testParser()">Test Parser</button>
+                <button onclick="clearAll()">Clear All</button>
+                <button onclick="reloadParser()">Reload Parser</button>
+                <div class="toggle-group">
+                    <button id="view-parsed" class="active" onclick="setView('parsed')">Parsed</button>
+                    <button id="view-raw" onclick="setView('raw')">Raw HTML</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Parsed Output</h2>
+            <div class="output-area" id="parsed-output">
+                Click "Test Parser" to see the output here.
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Debug Log</h2>
+            <div class="output-area" id="debug-log">
+                Debug information will appear here.
+            </div>
+        </div>
+    </div>
+
+    <!-- Load DOMPurify first -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+
+    <script>
+        let micronParser = null;
+        let isOriginalParser = false;
+        let currentView = 'parsed';
+        let lastParsedHTML = '';
+        
+        function log(message, type = 'info') {
+            const debugLog = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff7b72' : type === 'success' ? '#3fb950' : type === 'warning' ? '#ffa657' : '#e6edf3';
+            
+            debugLog.innerHTML += `<div class="debug-entry" style="color: ${color};">[${timestamp}] ${escapeHtml(message)}</div>`;
+            console.log(`[MICRON] ${message}`);
+            
+            // Auto-scroll to bottom
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('parser-status');
+            statusEl.innerHTML = escapeHtml(message);
+            statusEl.className = `status ${type}`;
+        }
+        
+        async function loadOriginalParser() {
+            log('Attempting to load original MicronParser...');
+            
+            try {
+                // Check if DOMPurify is available
+                if (typeof window.DOMPurify !== 'undefined') {
+                    log('DOMPurify is available', 'success');
+                } else {
+                    log('DOMPurify not found - parser may have issues', 'warning');
+                }
+                
+                // Check if already loaded
+                if (typeof window.MicronParser === 'function') {
+                    log('MicronParser already available globally', 'success');
+                    micronParser = new window.MicronParser(true, true);
+                    isOriginalParser = true;
+                    return true;
+                }
+                
+                // Try direct script loading
+                log('Loading script directly...');
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = './script/micron-parser_original.js';
+                    script.onload = () => {
+                        log('Script loaded successfully');
+                        resolve();
+                    };
+                    script.onerror = (e) => {
+                        log('Script loading failed: ' + e.message, 'error');
+                        reject(new Error('Script loading failed'));
+                    };
+                    document.head.appendChild(script);
+                });
+                
+                // Wait and check again
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                if (typeof window.MicronParser === 'function') {
+                    log('MicronParser now available after script load!', 'success');
+                    micronParser = new window.MicronParser(true, true);
+                    isOriginalParser = true;
+                    
+                    // Check available methods
+                    const methods = Object.getOwnPropertyNames(micronParser);
+                    log('Available methods: ' + methods.join(', '));
+                    
+                    // Test the parser with a simple string
+                    try {
+                        const testResult = micronParser.convertMicronToHtml('`!Test`!');
+                        log('Parser test successful, result: ' + testResult.substring(0, 50) + '...');
+                    } catch (testError) {
+                        log('Parser test failed: ' + testError.message, 'warning');
+                    }
+                    
+                    return true;
+                } else {
+                    log('MicronParser still not available after script load', 'warning');
+                    log('Available window props with "micron": ' + Object.keys(window).filter(k => k.toLowerCase().includes('micron')).join(', '));
+                    return false;
+                }
+                
+            } catch (error) {
+                log('Error loading original parser: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        function createFallbackParser() {
+            log('Creating fallback parser...', 'warning');
+            
+            micronParser = {
+                convertMicronToHtml: function(text) {
+                    log('Using fallback parser for ' + text.length + ' characters');
+                    
+                    let html = text;
+                    
+                    // Process formatting before HTML escaping
+                    html = html.replace(/`!([^`]*)`!/g, '###BOLD###$1###/BOLD###');
+                    html = html.replace(/`\*([^`]*)`\*/g, '###ITALIC###$1###/ITALIC###');
+                    html = html.replace(/`_([^`]*)`_/g, '###UNDERLINE###$1###/UNDERLINE###');
+                    html = html.replace(/`F([0-9a-fA-F]{3})/g, '###FG:$1###');
+                    html = html.replace(/`f/g, '###/FG###');
+                    html = html.replace(/`B([0-9a-fA-F]{3})/g, '###BG:$1###');
+                    html = html.replace(/`b/g, '###/BG###');
+                    html = html.replace(/`c/g, '###CENTER###');
+                    html = html.replace(/`a/g, '###/CENTER###');
+                    
+                    // HTML escape
+                    html = escapeHtml(html);
+                    
+                    // Convert placeholders
+                    html = html.replace(/###BOLD###([^#]*)###\/BOLD###/g, '<strong style="color: #58a6ff; font-weight: bold;">$1</strong>');
+                    html = html.replace(/###ITALIC###([^#]*)###\/ITALIC###/g, '<em style="color: #ffa657; font-style: italic;">$1</em>');
+                    html = html.replace(/###UNDERLINE###([^#]*)###\/UNDERLINE###/g, '<span style="text-decoration: underline; color: #79c0ff;">$1</span>');
+                    html = html.replace(/###FG:([0-9a-fA-F]{3})###/g, '<span style="color: #$1;">');
+                    html = html.replace(/###\/FG###/g, '</span>');
+                    html = html.replace(/###BG:([0-9a-fA-F]{3})###/g, '<span style="background-color: #$1; padding: 2px 4px; border-radius: 2px;">');
+                    html = html.replace(/###\/BG###/g, '</span>');
+                    html = html.replace(/###CENTER###/g, '<div style="text-align: center;">');
+                    html = html.replace(/###\/CENTER###/g, '</div>');
+                    
+                    // Sections
+                    html = html.replace(/^&gt;([^\n]*)/gm, '<div style="color: #58a6ff; font-weight: bold; font-size: 18px; margin: 16px 0 8px 0; border-bottom: 1px solid #30363d; padding-bottom: 4px;">$1</div>');
+                    html = html.replace(/^&gt;&gt;([^\n]*)/gm, '<div style="color: #58a6ff; font-weight: bold; font-size: 16px; margin: 12px 0 6px 20px;">$1</div>');
+                    
+                    // Line breaks
+                    html = html.replace(/\n/g, '<br>');
+                    
+                    return `<div style="font-family: 'SF Mono', Monaco, monospace; line-height: 1.6;">${html}</div>`;
+                }
+            };
+            
+            isOriginalParser = false;
+        }
+        
+        async function initializeParser() {
+            updateStatus('Loading parser...', 'warning');
+            
+            const success = await loadOriginalParser();
+            
+            if (success) {
+                updateStatus('✅ Original MicronParser loaded successfully!', 'success');
+                log('Parser initialization complete - using original parser', 'success');
+            } else {
+                updateStatus('⚠️ Using fallback parser (original not available)', 'warning');
+                createFallbackParser();
+                log('Parser initialization complete - using fallback parser', 'warning');
+            }
+        }
+        
+        function setView(view) {
+            currentView = view;
+            document.getElementById('view-parsed').className = view === 'parsed' ? 'active' : '';
+            document.getElementById('view-raw').className = view === 'raw' ? 'active' : '';
+            updateDisplay();
+        }
+        
+        function updateDisplay() {
+            const outputEl = document.getElementById('parsed-output');
+            
+            if (currentView === 'parsed') {
+                outputEl.innerHTML = lastParsedHTML;
+            } else {
+                outputEl.innerHTML = `<pre style="white-space: pre-wrap; font-size: 11px; color: #7d8590; overflow-x: auto;">${escapeHtml(lastParsedHTML)}</pre>`;
+            }
+        }
+        
+        function testParser() {
+            const input = document.getElementById('micron-input').value;
+            const output = document.getElementById('parsed-output');
+            
+            if (!input.trim()) {
+                output.innerHTML = '<div style="color: #7d8590; font-style: italic;">No input provided</div>';
+                return;
+            }
+            
+            try {
+                log(`Testing parser with ${input.length} characters`);
+                log(`Using ${isOriginalParser ? 'original' : 'fallback'} parser`);
+                
+                const result = micronParser.convertMicronToHtml(input);
+                log(`Parser returned ${result.length} characters of HTML`);
+                
+                lastParsedHTML = result;
+                updateDisplay();
+                log('Parsing completed successfully', 'success');
+                
+            } catch (error) {
+                log('Parsing error: ' + error.message, 'error');
+                output.innerHTML = `<div style="color: #ff7b72;">❌ Parsing failed: ${escapeHtml(error.message)}</div>`;
+            }
+        }
+        
+        function clearAll() {
+            document.getElementById('parsed-output').innerHTML = 'Output cleared.';
+            document.getElementById('debug-log').innerHTML = '';
+            lastParsedHTML = '';
+            log('Interface cleared');
+        }
+        
+        async function reloadParser() {
+            log('Reloading parser...', 'warning');
+            micronParser = null;
+            isOriginalParser = false;
+            
+            // Remove existing scripts
+            document.querySelectorAll('script[src*="micron-parser"]').forEach(s => s.remove());
+            
+            await initializeParser();
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Page loaded, initializing...');
+            log('DOMPurify version: ' + (window.DOMPurify ? window.DOMPurify.version : 'Not available'));
+            initializeParser();
+        });
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
+    <title>Micron Parser Test - Rewritten</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: #0d1117; 
+            color: #e6edf3; 
+            margin: 20px; 
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { 
+            background: #161b22; 
+            border: 1px solid #30363d; 
+            border-radius: 8px; 
+            padding: 20px; 
+            margin: 20px 0; 
+        }
+        .section h2 { 
+            color: #58a6ff; 
+            margin-top: 0; 
+            border-bottom: 1px solid #30363d; 
+            padding-bottom: 10px; 
+        }
+        .test-input { 
+            width: 100%; 
+            height: 150px; 
+            background: #21262d; 
+            color: #e6edf3; 
+            border: 1px solid #30363d; 
+            padding: 15px; 
+            font-family: 'SF Mono', Monaco, monospace; 
+            font-size: 13px;
+            border-radius: 6px;
+            resize: vertical;
+        }
+        .output-area { 
+            background: #0d1117; 
+            border: 1px solid #30363d; 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 6px;
+            min-height: 100px; 
+        }
+        .controls { 
+            margin: 15px 0; 
+            display: flex; 
+            gap: 10px; 
+            align-items: center;
+        }
+        button { 
+            background: #0969da; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1f6feb; }
+        .status { 
+            background: #21262d; 
+            padding: 15px; 
+            border-radius: 6px; 
+            font-family: 'SF Mono', Monaco, monospace; 
+            font-size: 12px;
+            border-left: 4px solid #58a6ff;
+        }
+        .error { 
+            color: #ff7b72; 
+            background: #490202; 
+            border-left-color: #da3633;
+        }
+        .success { 
+            color: #3fb950; 
+            background: #0d4a1f; 
+            border-left-color: #2ea043;
+        }
+        .warning { 
+            color: #ffa657; 
+            background: #4a2c00; 
+            border-left-color: #fb8500;
+        }
+        .debug-entry {
+            margin: 5px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #30363d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Micron Parser Test - Clean Version</h1>
+        
+        <div class="section">
+            <h2>Parser Status</h2>
+            <div id="parser-status" class="status">
+                Initializing...
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Test Input</h2>
+            <textarea class="test-input" id="micron-input">`!Welcome to NomadNet!`!
+
+This is a test of the `*micron markup`* system.
+
+`F0f0`*Colored text works like this*`f
+
+`c`B333 Centered text with background `b
+`a
+
+>Main Section
+This text is inside a section.
+>>Subsection
+Even deeper nesting works.
+
+`!Important:`! You can use `_underlined`_ text too.
+
+- This is a horizontal divider above
+`F00f`B222 Red text on gray background `f`b</textarea>
+            
+            <div class="controls">
+                <button onclick="testParser()">Test Parser</button>
+                <button onclick="clearAll()">Clear All</button>
+                <button onclick="reloadParser()">Reload Parser</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Parsed Output</h2>
+            <div class="output-area" id="parsed-output">
+                Click "Test Parser" to see the output here.
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Debug Log</h2>
+            <div class="output-area" id="debug-log">
+                Debug information will appear here.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let micronParser = null;
+        let isOriginalParser = false;
+        
+        function log(message, type = 'info') {
+            const debugLog = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff7b72' : type === 'success' ? '#3fb950' : type === 'warning' ? '#ffa657' : '#e6edf3';
+            
+            debugLog.innerHTML += `<div class="debug-entry" style="color: ${color};">[${timestamp}] ${escapeHtml(message)}</div>`;
+            console.log(`[MICRON] ${message}`);
+            
+            // Auto-scroll to bottom
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('parser-status');
+            statusEl.innerHTML = escapeHtml(message);
+            statusEl.className = `status ${type}`;
+        }
+        
+        async function loadOriginalParser() {
+            log('Attempting to load original MicronParser...');
+            
+            try {
+                // Check if already loaded
+                if (typeof window.MicronParser === 'function') {
+                    log('MicronParser already available globally', 'success');
+                    micronParser = new window.MicronParser(true, true);
+                    isOriginalParser = true;
+                    return true;
+                }
+                
+                // Try direct script loading
+                log('Loading script directly...');
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = './script/micron-parser_original.js';
+                    script.onload = () => {
+                        log('Script loaded successfully');
+                        resolve();
+                    };
+                    script.onerror = (e) => {
+                        log('Script loading failed: ' + e.message, 'error');
+                        reject(new Error('Script loading failed'));
+                    };
+                    document.head.appendChild(script);
+                });
+                
+                // Wait and check again
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                if (typeof window.MicronParser === 'function') {
+                    log('MicronParser now available after script load!', 'success');
+                    micronParser = new window.MicronParser(true, true);
+                    isOriginalParser = true;
+                    
+                    // Check available methods
+                    const methods = Object.getOwnPropertyNames(micronParser);
+                    log('Available methods: ' + methods.join(', '));
+                    
+                    return true;
+                } else {
+                    log('MicronParser still not available after script load', 'warning');
+                    log('Available window props with "micron": ' + Object.keys(window).filter(k => k.toLowerCase().includes('micron')).join(', '));
+                    return false;
+                }
+                
+            } catch (error) {
+                log('Error loading original parser: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        function createFallbackParser() {
+            log('Creating fallback parser...', 'warning');
+            
+            micronParser = {
+                convertMicronToHtml: function(text) {
+                    log('Using fallback parser for ' + text.length + ' characters');
+                    
+                    let html = text;
+                    
+                    // Process formatting before HTML escaping
+                    html = html.replace(/`!([^`]*)`!/g, '###BOLD###$1###/BOLD###');
+                    html = html.replace(/`\*([^`]*)`\*/g, '###ITALIC###$1###/ITALIC###');
+                    html = html.replace(/`_([^`]*)`_/g, '###UNDERLINE###$1###/UNDERLINE###');
+                    html = html.replace(/`F([0-9a-fA-F]{3})/g, '###FG:$1###');
+                    html = html.replace(/`f/g, '###/FG###');
+                    html = html.replace(/`B([0-9a-fA-F]{3})/g, '###BG:$1###');
+                    html = html.replace(/`b/g, '###/BG###');
+                    html = html.replace(/`c/g, '###CENTER###');
+                    html = html.replace(/`a/g, '###/CENTER###');
+                    
+                    // HTML escape
+                    html = escapeHtml(html);
+                    
+                    // Convert placeholders
+                    html = html.replace(/###BOLD###([^#]*)###\/BOLD###/g, '<strong style="color: #58a6ff; font-weight: bold;">$1</strong>');
+                    html = html.replace(/###ITALIC###([^#]*)###\/ITALIC###/g, '<em style="color: #ffa657; font-style: italic;">$1</em>');
+                    html = html.replace(/###UNDERLINE###([^#]*)###\/UNDERLINE###/g, '<span style="text-decoration: underline; color: #79c0ff;">$1</span>');
+                    html = html.replace(/###FG:([0-9a-fA-F]{3})###/g, '<span style="color: #$1;">');
+                    html = html.replace(/###\/FG###/g, '</span>');
+                    html = html.replace(/###BG:([0-9a-fA-F]{3})###/g, '<span style="background-color: #$1; padding: 2px 4px; border-radius: 2px;">');
+                    html = html.replace(/###\/BG###/g, '</span>');
+                    html = html.replace(/###CENTER###/g, '<div style="text-align: center;">');
+                    html = html.replace(/###\/CENTER###/g, '</div>');
+                    
+                    // Sections
+                    html = html.replace(/^&gt;([^\n]*)/gm, '<div style="color: #58a6ff; font-weight: bold; font-size: 18px; margin: 16px 0 8px 0; border-bottom: 1px solid #30363d; padding-bottom: 4px;">$1</div>');
+                    html = html.replace(/^&gt;&gt;([^\n]*)/gm, '<div style="color: #58a6ff; font-weight: bold; font-size: 16px; margin: 12px 0 6px 20px;">$1</div>');
+                    
+                    // Line breaks
+                    html = html.replace(/\n/g, '<br>');
+                    
+                    return `<div style="font-family: 'SF Mono', Monaco, monospace; line-height: 1.6;">${html}</div>`;
+                }
+            };
+            
+            isOriginalParser = false;
+        }
+        
+        async function initializeParser() {
+            updateStatus('Loading parser...', 'warning');
+            
+            const success = await loadOriginalParser();
+            
+            if (success) {
+                updateStatus('✅ Original MicronParser loaded successfully!', 'success');
+                log('Parser initialization complete - using original parser', 'success');
+            } else {
+                updateStatus('⚠️ Using fallback parser (original not available)', 'warning');
+                createFallbackParser();
+                log('Parser initialization complete - using fallback parser', 'warning');
+            }
+        }
+        
+        function testParser() {
+            const input = document.getElementById('micron-input').value;
+            const output = document.getElementById('parsed-output');
+            
+            if (!input.trim()) {
+                output.innerHTML = '<div style="color: #7d8590; font-style: italic;">No input provided</div>';
+                return;
+            }
+            
+            try {
+                log(`Testing parser with ${input.length} characters`);
+                log(`Using ${isOriginalParser ? 'original' : 'fallback'} parser`);
+                
+                const result = micronParser.convertMicronToHtml(input);
+                log(`Parser returned ${result.length} characters of HTML`);
+                
+                output.innerHTML = result;
+                log('Parsing completed successfully', 'success');
+                
+            } catch (error) {
+                log('Parsing error: ' + error.message, 'error');
+                output.innerHTML = `<div style="color: #ff7b72;">❌ Parsing failed: ${escapeHtml(error.message)}</div>`;
+            }
+        }
+        
+        function clearAll() {
+            document.getElementById('parsed-output').innerHTML = 'Output cleared.';
+            document.getElementById('debug-log').innerHTML = '';
+            log('Interface cleared');
+        }
+        
+        async function reloadParser() {
+            log('Reloading parser...', 'warning');
+            micronParser = null;
+            isOriginalParser = false;
+            
+            // Remove existing scripts
+            document.querySelectorAll('script[src*="micron-parser"]').forEach(s => s.remove());
+            
+            await initializeParser();
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Page loaded, initializing...');
+            initializeParser();
+        });
+    </script>
+</body>
+</html>

@@ -54,20 +54,20 @@
 
     <template id="tab-content-template">
     <div class="tab-content">
-
         <div class="nav-bar">
             <div class="nav-controls">
                 <button class="nav-btn back-btn" onclick="navigateBack()" disabled>←</button>
                 <button class="nav-btn forward-btn" onclick="navigateForward()" disabled>→</button>
                 <button class="nav-btn" onclick="refreshPage()">⟳</button>
-                <button class="nav-btn home-btn" onclick="navigateHome()" title="Go to home page">🏠</button>
+                <button class="nav-btn home-btn" onclick="navigateHome()" title="Go to index.mu homepage">🏠</button>
             </div>
             <input type="text" class="address-bar" id="address-bar" placeholder="Enter NomadNet URL (hash:/path/to/page.mu)" onkeypress="handleAddressBarEnter(event)">
-            <button class="go-btn" onclick="navigateToUrl()" title="Navigate to page">Go</button>
-            <button class="fingerprint-btn" onclick="sendFingerprintToCurrentNode()" title="Send fingerprint to current node">ID</button>
-
+            <button class="go-btn" onclick="navigateToUrl()" title="Navigate to url page"><img src="/templates/go.png" alt="" style="width: 19px; height: 19px; vertical-align: middle;"></button>
+            <button class="star-btn" onclick="addCurrentPageToFavorites()" title="Add current page to favorites"><img src="/templates/star.png" alt="" style="width: 21px; height: 21px; vertical-align: middle;"></button>
+            <button class="fingerprint-btn" onclick="sendFingerprintToCurrentNode()" title="Send fingerprint to current node">
+                <img src="/templates/fingerprint.png" alt="" style="width: 20px; height: 20px; vertical-align: middle;">                
+            </button>           
         </div>
-
         <div class="header">
             <div class="page-info">
                 <span class="page-title"><center>Select a node from the announce list, favorites, or paste an address into the bar to navigate pages.</center></span>
@@ -75,16 +75,14 @@
             </div>
             <button class="view-toggle">Raw View</button>
         </div>
-
         <div class="browser-area">
             <div class="page-content">
                 <div class="welcome">
                     <h2>rBrowser v1.0</h2>
-                    <p>Welcome to the NomadNet Standalone Browser.<br>This browser connects to Reticulum and listens for NomadNetwork Nodes serving pages.<br>Wait for announces and select a node from the sidebar to explore the distributed content.</p>
+                    <p>Welcome to the NomadNet Standalone Browser.<br>This browser connects to Reticulum and listens for announces of NomadNet Nodes serving pages.<br>Wait for announces and select a node from the sidebar to explore the distributed content<br>or navigate manually with the navigation bar.</p>
                 </div>
             </div>
         </div>
-
         <div class="shortcuts-bar">
             <span class="shortcut-item">
                 ↳ <kbd>Alt + N</kbd> Open New Tab
@@ -107,9 +105,7 @@
             <span class="shortcut-item">
                 <kbd>Alt + I</kbd> Send Fingerprint 
             </span>⇅
-
         </div>
-
     </div>
 </template>
 
@@ -287,6 +283,7 @@ function switchToTab(tabId) {
             activeTab.updateNavigationButtons();
             
             updateNodeSelection();
+            setTimeout(updateStarButtonState, 100);
         }
     }
 }
@@ -319,6 +316,81 @@ function getActiveTab() {
 }
 
 // Favorites system //
+
+function addCurrentPageToFavorites() {
+    const tab = getActiveTab();
+    if (!tab || !tab.currentUrl) {
+        showNotification('No current page to add to favorites', 'warning', 4000);
+        return;
+    }
+   
+    const parsed = parseNomadNetUrl(tab.currentUrl);
+    if (!parsed) {
+        showNotification('Cannot parse current URL', 'error', 4000);
+        return;
+    }
+   
+    // Check if already favorited - if so, remove it
+    const existingIndex = favoriteNodes.findIndex(fav => fav.hash === parsed.hash);
+    if (existingIndex >= 0) {
+        const removedName = favoriteNodes[existingIndex].name;
+        favoriteNodes.splice(existingIndex, 1);
+        saveFavorites();
+        updateFavoritesDisplay();
+        
+        // NEW: Update node list star
+        const nodeStarBtn = document.querySelector(`[data-hash="${parsed.hash}"].star-btn`);
+        if (nodeStarBtn) {
+            nodeStarBtn.style.color = '#7d8590';
+            nodeStarBtn.textContent = '☆';
+        }
+        
+        updateNodes();
+        updateStarButtonState();
+        
+        showNotification(`Removed "${removedName}" from favorites`, 'info', 4000);
+        return;
+    }
+    
+    // Add to favorites
+    const name = tab.knownNodeName || prompt("Enter a name for this favorite:", `Node (${parsed.hash.substring(0, 8)}...)`);
+    if (!name) return;
+    
+    favoriteNodes.push({ hash: parsed.hash, name: name });
+    saveFavorites();
+    updateFavoritesDisplay();
+    
+    // NEW: Update node list star
+    const nodeStarBtn = document.querySelector(`[data-hash="${parsed.hash}"].star-btn`);
+    if (nodeStarBtn) {
+        nodeStarBtn.style.color = '#ffa657';
+        nodeStarBtn.textContent = '★';
+    }
+    
+    updateNodes();
+    updateStarButtonState();
+
+    showNotification(`Added "${name}" to favorites!`, 'success', 4000);
+}
+
+function updateStarButtonState() {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    const starBtn = document.querySelector(`#${tab.id} .star-btn`);
+    if (!starBtn) return;
+    
+    if (tab.currentUrl) {
+        const parsed = parseNomadNetUrl(tab.currentUrl);
+        if (parsed && favoriteNodes.some(fav => fav.hash === parsed.hash)) {
+            starBtn.classList.add('favorited');
+            starBtn.title = 'Remove from favorites';
+        } else {
+            starBtn.classList.remove('favorited');
+            starBtn.title = 'Add current page to favorites';
+        }
+    }
+}
 
 function showAddFavoriteDialog() {
     const input = prompt("Enter NomadNet address (hash:/path/to/page.mu or just hash for node):");
@@ -485,6 +557,7 @@ async function navigateToUrlInternalTab(url, addHistory = true) {
     }
     
     fetchPageByUrlTab(parsed.hash, parsed.path, url);
+    updateStarButtonState();
 }
 
 function toggleViewTab() {
@@ -1510,6 +1583,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 .catch(error => {
                     console.warn('Nodes API error:', error);
                 });
+            updateStarButtonState();
         }
 
         function updateStatus() {
@@ -1870,6 +1944,9 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
 
             saveFavorites();
             updateFavoritesDisplay();
+            
+            // NEW: Update nav bar star button state
+            updateStarButtonState();
         }
 
         function updateFavoritesDisplay() {
@@ -2288,7 +2365,7 @@ function toggleAutoCaching() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: 'toggle_auto_cache', enabled: enabled})
     });
-    showNotification(enabled ? 'Auto-caching enabled' : 'Auto-caching disabled', 'success');
+    showNotification(enabled ? 'Search Engine Auto-caching enabled' : 'Search Engine Auto-caching disabled', 'success');
 }
 
 function clearAllCache() {

@@ -155,8 +155,8 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 .nav-btn:disabled { background: #21262d; color: #656d76; cursor: not-allowed; border-color: #30363d; }
 .address-bar { flex: 1; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; padding: 8px 12px; border-radius: 4px; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace; font-size: 13px; }
 .address-bar:focus { outline: none; border-color: #58a6ff; }
-.go-btn { background: #0969da; border: 1px solid #1f6feb; color: #ffffff; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.12s ease; }
-.go-btn:hover { background: #1f6feb; }
+.go-btn { background: #0969da; border: 1px solid #1f6feb; color: #ffffff; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.20s ease; }
+.go-btn:hover { background: #1ec735; }
         
 .page-info {
     display: flex;
@@ -564,6 +564,50 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     color: #ef4444;
 }
 
-.fingerprint-btn { background: #0969da; border: 1px solid #1f6feb; color: #ffffff; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.12s ease; }
+.star-btn { 
+    background: #0969da; 
+    border: 1px solid #30363d; 
+    color: #ffa657; 
+    padding: 5px 10px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-size: 15px; 
+    font-weight: 600;
+    transition: all 0.30s ease; 
+    min-width: 28px; 
+    text-align: center; 
+}
+
+.star-btn:hover { 
+    background: #1ec735; 
+    border-color: #ffa657; 
+    color: #ffcc88;
+}
+
+.star-btn.favorited {
+    background: #ffa657;
+    color: #0d1117;
+    border-color: #ffa657;
+}
+
+.star-btn.favorited:hover {
+    background: #ffcc88;
+}
+
+.fingerprint-btn { 
+    background: #ffffff; 
+    border: 1px solid #1f6feb; 
+    color: #ffffff; 
+    padding: 5px 10px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-size: 15px; 
+    font-weight: 600; 
+    transition: all 0.30s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .fingerprint-btn:hover { background: #1ec735; }
 .fingerprint-btn:disabled { background: #6e7681; cursor: not-allowed; opacity: 0.6; }

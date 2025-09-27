@@ -136,12 +136,12 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
 - ✅ **User inputs support**: Form, URL, and input boxes sending user input are supported.
 - ✅ **Fingerprint**: Send identity and lxmf address to the host node
-- ✅ **NomadNet Search Engine** : Automatic caching on first announce for index.mu if enabled for a local search engine.
+- ✅ **NomadNet Search Engine** : Local NomadNet Nodes page-caching Search Engine
 
 ## Next Implementations:
 ### The following features are planned for the next versions:
 
-- Docker Version, Windows Executable version, Linux Executable Appimage 
+- Docker Version, Windows Executable version, Linux Executable Appimage, maybe.
 
 
 ## Known Issues:
