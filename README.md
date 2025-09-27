@@ -135,13 +135,13 @@ This browser automatically discovers NomadNet nodes through network announces an
 - ✅ **Web UI**: Implemented waitress and gunicorn production ready web servers, fallback to flask if missing.
 - ✅ **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
 - ✅ **User inputs support**: Form, URL, and input boxes sending user input are supported.
-
+- ✅ **Fingerprint**: Send identity and lxmf address to the host node
+- ✅ **NomadNet Search Engine** : Automatic caching on first announce for index.mu if enabled for a local search engine.
 
 ## Next Implementations:
-### The following features are planned for the next version:
+### The following features are planned for the next versions:
 
-
-- ✖️ **Fingerprint**: Send identity and lxmf address to the host node
+- Docker Version, Windows Executable version, Linux Executable Appimage 
 
 
 ## Known Issues:
@@ -188,7 +188,7 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## External dependencies:
 
-This project includes local versions of:
+This project includes local available versions of:
 
 - micronparser.js for NomadNet pages rendering 
 - DOMPurify.min.js for html security

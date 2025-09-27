@@ -415,6 +415,43 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     color: #58a6ff;
 }
 
+.search-tab-btn {
+    background: #161b22;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: all 0.12s ease;
+}
+
+.search-tab-btn:hover {
+    background: #21262d;
+    border-color: #58a6ff;
+    color: #58a6ff;
+}
+
+/* Add this to your style.css or in a <style> tag */
+#search-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+#search-results::-webkit-scrollbar-track {
+    background: #161b22;
+    border-radius: 4px;
+}
+
+#search-results::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 4px;
+}
+
+#search-results::-webkit-scrollbar-thumb:hover {
+    background: #484f58;
+}
+
 /* Tab content styling */
 .tab-content-wrapper {
     position: relative;
@@ -526,3 +563,7 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 .connerror {
     color: #ef4444;
 }
+
+.fingerprint-btn { background: #0969da; border: 1px solid #1f6feb; color: #ffffff; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.12s ease; }
+.fingerprint-btn:hover { background: #1ec735; }
+.fingerprint-btn:disabled { background: #6e7681; cursor: not-allowed; opacity: 0.6; }

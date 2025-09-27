@@ -11,6 +11,16 @@ import io
 import RNS
 import RNS.vendor.umsgpack as msgpack
 import secrets
+from pathlib import Path
+import queue
+
+# Ensure UTF-8 output for Windows console
+if sys.platform == "win32":
+    try:
+        # Try to set UTF-8 encoding for console output
+        os.system('chcp 65001 >nul')  # Set Windows console to UTF-8
+    except:
+        pass
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16) # needed for flask sessions
@@ -122,6 +132,51 @@ class NomadNetBrowser:
         self.result["received"] = True
         self.response_event.set()
 
+    def send_fingerprint(self, timeout=30):
+        """Send fingerprint using RNS link.identify() like MeshChat does"""
+        try:
+            print(f"Sending fingerprint to {RNS.prettyhexrep(self.destination_hash)[:16]}...")
+            
+            # Get or create cached link
+            if hasattr(self.main_browser, 'nomadnet_cached_links') and self.destination_hash in self.main_browser.nomadnet_cached_links:
+                existing_link = self.main_browser.nomadnet_cached_links[self.destination_hash]
+                if existing_link.status == RNS.Link.ACTIVE:
+                    print("Using existing cached link for identity establishment")
+                    # Use RNS protocol-level identity establishment
+                    existing_link.identify(self.main_browser.identity)
+                    
+                    # Also store LXMF destination for 'dest' variable
+                    lxmf_dest_hash = RNS.Destination.hash(self.main_browser.identity, "lxmf", "delivery")
+                    existing_link.fingerprint_data = {"dest": lxmf_dest_hash.hex()}
+                    
+                    print(f"Identity established on link: {RNS.prettyhexrep(self.main_browser.identity.hash)}")
+                    print(f"LXMF dest stored: {lxmf_dest_hash.hex()}")
+                    
+                    return {"message": "Identity established on existing link", "status": "success", "error": None}
+            
+            # If no existing link, we need to create one first by making a page request
+            # Then establish identity on that link
+            response = self.main_browser.fetch_page(self.destination_hash.hex(), "/page/index.mu")
+            
+            if response["status"] == "success":
+                # Now identify on the newly created cached link
+                if self.destination_hash in self.main_browser.nomadnet_cached_links:
+                    link = self.main_browser.nomadnet_cached_links[self.destination_hash]
+                    link.identify(self.main_browser.identity)
+                    
+                    lxmf_dest_hash = RNS.Destination.hash(self.main_browser.identity, "lxmf", "delivery")
+                    link.fingerprint_data = {"dest": lxmf_dest_hash.hex()}
+                    
+                    print(f"Identity established on new link: {RNS.prettyhexrep(self.main_browser.identity.hash)}")
+                    
+                    return {"message": "Identity established on new link", "status": "success", "error": None}
+            
+            return {"error": "Failed to establish link", "message": "Could not create or identify on link", "status": "error"}
+                
+        except Exception as e:
+            print(f"Exception during fingerprint send: {str(e)}")
+            return {"error": str(e), "message": f"Exception: {str(e)}", "status": "error"}
+        
 class NomadNetFileBrowser:
     def __init__(self, main_browser, destination_hash):
         self.main_browser = main_browser
@@ -283,7 +338,26 @@ class NomadNetWebBrowser:
         self.last_announce_time = None
         self.reticulum_ready = False
         self.start_time = time.time()
-        
+        self.nomadnet_cached_links = {}
+        self.cache_queue = queue.Queue()
+        self.cache_dir = Path("cache/nodes")
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        # search engine system page cache
+        self.cache_worker_thread = threading.Thread(target=self.background_cache_worker, daemon=True)
+        self.cache_worker_thread.start()
+        # search engine system cache settings
+        self.cache_settings = {
+            'auto_cache_enabled': True,
+            'size_limit_mb': 100,
+            'expiry_days': 30,
+            'search_limit': 50,
+            'cache_additional': False
+        }
+        self.load_cache_settings()
+        self.additional_cache_queue = queue.Queue()
+        self.additional_cache_worker_thread = threading.Thread(target=self.additional_cache_worker, daemon=True)
+        self.additional_cache_worker_thread.start()
+        print("✅ Cache worker threads started")    
         
         print("=" * 90)
         print("🌐 rBrowser v1.0 - Standalone Nomadnet Browser - https://github.com/fr33n0w/rBrowser")
@@ -293,7 +367,267 @@ class NomadNetWebBrowser:
         print("🔗 Connecting to Reticulum...")
         print("=" * 90)
         self.init_reticulum()
+
+    def additional_cache_worker(self):
+        """Worker thread specifically for caching additional pages"""
+        print("🔧 Additional cache worker started")
+        while True:
+            try:
+                node_hash, node_name = self.additional_cache_queue.get(timeout=5)
+                print(f"🔧 Additional cache worker processing: {node_name}")
+                self.cache_additional_pages(node_hash, node_name)
+                self.additional_cache_queue.task_done()
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"❌ Additional cache worker error: {e}")
+                    
+    def load_cache_settings(self):
+        """Load settings from file"""
+        settings_dir = Path("settings")
+        settings_dir.mkdir(exist_ok=True)  # Create settings folder if it doesn't exist
+        settings_file = settings_dir / "cache_settings.json"
         
+        if settings_file.exists():
+            try:
+                import json
+                with open(settings_file, 'r') as f:
+                    saved_settings = json.load(f)
+                    self.cache_settings.update(saved_settings)
+                    print(f"📋 Loaded cache settings: {self.cache_settings}")
+            except Exception as e:
+                print(f"Error loading cache settings: {e}")
+
+    def save_cache_settings(self):
+        """Save settings to file"""
+        try:
+            import json
+            settings_dir = Path("settings")
+            settings_dir.mkdir(exist_ok=True)  # Create settings folder if it doesn't exist
+            settings_file = settings_dir / "cache_settings.json"
+            
+            with open(settings_file, 'w') as f:
+                json.dump(self.cache_settings, f, indent=2)
+            print(f"💾 Saved cache settings: {self.cache_settings}")
+        except Exception as e:
+            print(f"Error saving cache settings: {e}")
+            
+    def enforce_cache_size_limit(self):
+        """Remove oldest cache entries if size limit is exceeded"""
+        size_limit_mb = self.cache_settings.get('size_limit_mb', -1)
+        if size_limit_mb == -1:  # Unlimited
+            return
+        
+        if not self.cache_dir.exists():
+            return
+        
+        # Calculate current cache size
+        total_size = 0
+        cache_entries = []
+        
+        for node_dir in self.cache_dir.iterdir():
+            if node_dir.is_dir():
+                dir_size = 0
+                cached_at_file = node_dir / "cached_at.txt"
+                
+                # Get directory size
+                for file in node_dir.rglob('*'):
+                    if file.is_file():
+                        dir_size += file.stat().st_size
+                
+                total_size += dir_size
+                
+                # Get cache timestamp
+                cache_time = datetime.now()  # Default to now if no timestamp
+                if cached_at_file.exists():
+                    try:
+                        cache_time = datetime.fromisoformat(cached_at_file.read_text().strip())
+                    except:
+                        pass
+                
+                cache_entries.append({
+                    'path': node_dir,
+                    'size': dir_size,
+                    'time': cache_time
+                })
+        
+        # Check if we exceed the limit
+        size_limit_bytes = size_limit_mb * 1024 * 1024
+        if total_size <= size_limit_bytes:
+            return
+        
+        # Remove oldest entries until under limit
+        cache_entries.sort(key=lambda x: x['time'])  # Oldest first
+        
+        for entry in cache_entries:
+            if total_size <= size_limit_bytes:
+                break
+            
+            try:
+                import shutil
+                shutil.rmtree(entry['path'])
+                total_size -= entry['size']
+                print(f"🗑️ Removed old cache: {entry['path'].name} ({entry['size'] // 1024} KB)")
+            except Exception as e:
+                print(f"Error removing cache {entry['path']}: {e}")
+
+    def cleanup_expired_cache(self):
+        """Remove cache entries older than expiry setting"""
+        expiry_days = self.cache_settings.get('expiry_days', -1)
+        if expiry_days == -1:  # Never expire
+            return
+        
+        if not self.cache_dir.exists():
+            return
+        
+        from datetime import timedelta
+        cutoff_date = datetime.now() - timedelta(days=expiry_days)
+        removed_count = 0
+        
+        for node_dir in self.cache_dir.iterdir():
+            if node_dir.is_dir():
+                cached_at_file = node_dir / "cached_at.txt"
+                
+                if cached_at_file.exists():
+                    try:
+                        cache_time = datetime.fromisoformat(cached_at_file.read_text().strip())
+                        if cache_time < cutoff_date:
+                            import shutil
+                            shutil.rmtree(node_dir)
+                            removed_count += 1
+                            print(f"🗑️ Expired cache removed: {node_dir.name}")
+                    except Exception as e:
+                        print(f"Error processing cache expiry for {node_dir}: {e}")
+        
+        if removed_count > 0:
+            print(f"🧹 Removed {removed_count} expired cache entries")
+
+    def cache_single_page(self, node_hash, node_name, page_path):
+        try:
+            print(f"📥 Attempting to cache page from {node_name} ({node_hash[:16]}...)")
+            print(f"🔧 Additional caching setting: {self.cache_settings.get('cache_additional', False)}")
+            print(f"🔧 Page path: {page_path}")
+            
+            browser = NomadNetBrowser(self, node_hash)
+            response = browser.fetch_page(page_path)
+            
+            print(f"📋 Response status: {response['status']}")
+            if response["status"] == "success":
+                cache_dir = self.cache_dir / node_hash
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                print(f"📂 Created cache directory: {cache_dir}")
+                
+                # Save files with explicit UTF-8 encoding
+                try:
+                    (cache_dir / "index.mu").write_text(response["content"], encoding='utf-8')
+                    (cache_dir / "node_name.txt").write_text(node_name, encoding='utf-8')
+                    (cache_dir / "cached_at.txt").write_text(str(datetime.now()), encoding='utf-8')
+                    
+                    print(f"📄 Saved {len(response['content'])} characters to {cache_dir / 'index.mu'}")
+                    print(f"✅ Successfully cached page from {node_name}")
+                    
+                    # Check if we should cache additional pages
+                    should_cache_additional = (
+                        self.cache_settings.get('cache_additional', False) and 
+                        page_path == "/page/index.mu"
+                    )
+                    print(f"🔧 Should cache additional: {should_cache_additional}")
+                    
+                    if should_cache_additional:
+                        print(f"📑 Triggering additional page caching for {node_name}")
+                        self.cache_additional_pages(node_hash, node_name)
+                    
+                    # Run cache maintenance after successful caching
+                    self.enforce_cache_size_limit()
+                    self.cleanup_expired_cache()
+                    
+                except UnicodeEncodeError as e:
+                    # Fallback: save with error handling for problematic characters
+                    safe_content = response["content"].encode('utf-8', errors='replace').decode('utf-8')
+                    safe_node_name = node_name.encode('utf-8', errors='replace').decode('utf-8')
+                    
+                    (cache_dir / "index.mu").write_text(safe_content, encoding='utf-8')
+                    (cache_dir / "node_name.txt").write_text(safe_node_name, encoding='utf-8')
+                    (cache_dir / "cached_at.txt").write_text(str(datetime.now()), encoding='utf-8')
+                    
+                    print(f"✅ Successfully cached page from {safe_node_name} (with character replacements)")
+                    
+                    # Check if we should cache additional pages
+                    should_cache_additional = (
+                        self.cache_settings.get('cache_additional', False) and 
+                        page_path == "/page/index.mu"
+                    )
+                    print(f"🔧 Should cache additional: {should_cache_additional}")
+                    
+                    if should_cache_additional:
+                        print(f"📑 Triggering additional page caching for {safe_node_name}")
+                        self.cache_additional_pages(node_hash, safe_node_name)
+                    
+                    # Run cache maintenance after successful caching
+                    self.enforce_cache_size_limit()
+                    self.cleanup_expired_cache()
+                    
+            else:
+                print(f"❌ Failed to fetch page: {response.get('error', 'Unknown error')}")
+                
+        except Exception as e:
+            print(f"❌ Exception caching page from {node_name}: {e}")
+            import traceback
+            traceback.print_exc()
+
+
+
+    def cache_additional_pages(self, node_hash, node_name):
+        """Cache common additional pages from a node"""
+        
+        if not self.cache_settings.get('cache_additional', False):
+            print(f"DEBUG: Additional caching disabled, skipping {node_name}")
+            return
+        
+        additional_pages = [
+            "/page/home.mu",
+            "/page/about.mu",
+            "/page/menu.mu", 
+            "/page/info.mu",
+            "/page/contact.mu",
+            "/page/help.mu",
+            "/page/messageboard/messageboard.mu",
+            "/page/messageboard.mu",
+            "/page/links.mu",
+            "/page/faq.mu",
+            "/page/files.mu",
+            "/page/boards.mu",
+            "/page/nomadForum/index.mu",
+            "/page/archive.mu"
+        ]
+        
+        print(f"📑 Starting additional page caching for {node_name}...")
+        cache_dir = self.cache_dir / node_hash
+        
+        for page_path in additional_pages:
+            try:
+                print(f"📄 Trying to cache: {page_path}")
+                browser = NomadNetBrowser(self, node_hash)
+                response = browser.fetch_page(page_path)
+                
+                if response["status"] == "success" and response["content"].strip():
+                    # Create pages subdirectory
+                    pages_dir = cache_dir / "pages"
+                    pages_dir.mkdir(exist_ok=True)
+                    
+                    # Save the page (remove /page/ prefix and .mu extension for filename)
+                    filename = page_path.replace("/page/", "").replace(".mu", "") + ".mu"
+                    page_file = pages_dir / filename
+                    
+                    page_file.write_text(response["content"], encoding='utf-8')
+                    print(f"📄 Cached additional page: {page_path}")
+                else:
+                    print(f"⚠️ Additional page not found or empty: {page_path}")
+                    
+            except Exception as e:
+                print(f"❌ Failed to cache additional page {page_path}: {e}")
+
+                
     def init_reticulum(self):
         try:
             # Set initial connecting state
@@ -326,14 +660,14 @@ class NomadNetWebBrowser:
             self.connection_state = "failed"
             print(f"Failed to initialize: {e}")
             sys.exit(1)
-        
+            
     def process_nomadnet_announce(self, destination_hash, announced_identity, app_data):
         self.announce_count += 1
         self.last_announce_time = time.time()  # Track when we last received an announce
-        
+    
         hash_str = RNS.prettyhexrep(destination_hash)
         clean_hash_str = hash_str.replace("<", "").replace(">", "").replace(":", "")
-        
+    
         node_name = "UNKNOWN"
         if app_data:
             try:
@@ -346,12 +680,12 @@ class NomadNetWebBrowser:
                     node_name = f"BinaryNode_{hash_str[:8]}"
         else:
             node_name = f"EmptyNode_{hash_str[:8]}"
-        
+    
         # Filter out test nodes
         if node_name.startswith("EmptyNode_") or node_name.startswith("BinaryNode_") or node_name == "UNKNOWN":
             print(f"Filtered test node: {hash_str[:16]} -> {node_name}")
             return
-        
+    
         # Track per-node announce count
         if hash_str in self.nomadnet_nodes:
             # Increment this node's announce count
@@ -367,19 +701,214 @@ class NomadNetWebBrowser:
                 "app_data_length": len(app_data) if app_data else 0,
                 "last_seen_relative": "Just now"
             }
-        
+    
         # Update other fields for existing nodes
         self.nomadnet_nodes[hash_str]["name"] = node_name
         self.nomadnet_nodes[hash_str]["last_seen"] = datetime.now().isoformat()
         self.nomadnet_nodes[hash_str]["app_data_length"] = len(app_data) if app_data else 0
         self.nomadnet_nodes[hash_str]["last_seen_relative"] = "Just now"
-        
-        # CRITICAL FIX: Update connection state to "active" when we receive valid announces
+    
         if self.connection_state == "connected":
             self.connection_state = "active"
             print(f"🟢 Connection state updated to ACTIVE (received first valid announce)")
-        
+    
         print(f"🌐 NomadNet Announce #{self.announce_count}: {clean_hash_str} -> {node_name} (node announces: {self.nomadnet_nodes[hash_str]['node_announce_count']})")
+        
+        # search engine cache system #
+        cache_path = self.cache_dir / clean_hash_str
+        index_file = cache_path / "index.mu"
+    
+        # Check if cache exists AND has content
+        should_cache = False
+        should_cache_additional = False
+        
+        if not cache_path.exists():
+            should_cache = True
+            print(f"🔄 Queuing {node_name} for caching (new node)...")
+        elif not index_file.exists():
+            should_cache = True
+            print(f"🔄 Queuing {node_name} for re-caching (missing index)...")
+        else:
+            try:
+                content = index_file.read_text(encoding='utf-8', errors='ignore')
+                if len(content.strip()) < 10:  # Less than 10 characters = probably empty/failed
+                    should_cache = True
+                    print(f"🔄 Queuing {node_name} for re-caching (empty content)...")
+                else:
+                    # Check if we need additional pages for existing good cache
+                    if self.cache_settings.get('cache_additional', False):
+                        pages_dir = cache_path / "pages"
+                        if not pages_dir.exists() or len(list(pages_dir.glob("*.mu"))) == 0:
+                            should_cache_additional = True
+                            print(f"🔄 Queuing {node_name} for additional page caching...")
+            except:
+                should_cache = True
+                print(f"🔄 Queuing {node_name} for re-caching (read error)...")
+    
+        if should_cache and self.cache_settings.get('auto_cache_enabled', True):
+            self.cache_queue.put((clean_hash_str, node_name))
+        elif should_cache_additional and self.cache_settings.get('auto_cache_enabled', True):
+            # Queue just for additional pages, not full caching
+            self.additional_cache_queue.put((clean_hash_str, node_name))
+        elif should_cache:
+            print(f"⏸️ Auto-caching disabled, skipping {node_name}")
+        elif should_cache_additional:
+            print(f"⏸️ Auto-caching disabled, skipping additional pages for {node_name}")
+        else:
+            print(f"📁 {node_name} already cached, skipping...")
+            
+    def background_cache_worker(self):
+        """Runs in separate thread"""
+        while True:
+            try:
+                hash_str, node_name = self.cache_queue.get(timeout=5)
+                self.cache_single_page(hash_str, node_name, "/page/index.mu")
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"Cache worker error: {e}")
+
+    def cache_single_page(self, node_hash, node_name, page_path):
+        try:
+            print(f"📥 Attempting to cache page from {node_name} ({node_hash[:16]}...)")
+            
+            browser = NomadNetBrowser(self, node_hash)
+            response = browser.fetch_page(page_path)
+            
+            print(f"📋 Response status: {response['status']}")
+            if response["status"] == "success":
+                cache_dir = self.cache_dir / node_hash
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                print(f"📂 Created cache directory: {cache_dir}")
+                
+                # Save files with explicit UTF-8 encoding
+                try:
+                    (cache_dir / "index.mu").write_text(response["content"], encoding='utf-8')
+                    (cache_dir / "node_name.txt").write_text(node_name, encoding='utf-8')
+                    (cache_dir / "cached_at.txt").write_text(str(datetime.now()), encoding='utf-8')
+                    
+                    print(f"📄 Saved {len(response['content'])} characters to {cache_dir / 'index.mu'}")
+                    print(f"✅ Successfully cached page from {node_name}")
+                    
+                    # Run cache maintenance after successful caching
+                    self.enforce_cache_size_limit()
+                    self.cleanup_expired_cache()
+                    
+                except UnicodeEncodeError as e:
+                    # Fallback: save with error handling for problematic characters
+                    safe_content = response["content"].encode('utf-8', errors='replace').decode('utf-8')
+                    safe_node_name = node_name.encode('utf-8', errors='replace').decode('utf-8')
+                    
+                    (cache_dir / "index.mu").write_text(safe_content, encoding='utf-8')
+                    (cache_dir / "node_name.txt").write_text(safe_node_name, encoding='utf-8')
+                    (cache_dir / "cached_at.txt").write_text(str(datetime.now()), encoding='utf-8')
+                    
+                    print(f"✅ Successfully cached page from {safe_node_name} (with character replacements)")
+                    
+                    # Run cache maintenance after successful caching
+                    self.enforce_cache_size_limit()
+                    self.cleanup_expired_cache()
+                    
+            else:
+                print(f"❌ Failed to fetch page: {response.get('error', 'Unknown error')}")
+                
+        except Exception as e:
+            print(f"❌ Exception caching page from {node_name}: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def enforce_cache_size_limit(self):
+        """Remove oldest cache entries if size limit is exceeded"""
+        size_limit_mb = self.cache_settings.get('size_limit_mb', -1)
+        if size_limit_mb == -1:  # Unlimited
+            return
+        
+        if not self.cache_dir.exists():
+            return
+        
+        # Calculate current cache size
+        total_size = 0
+        cache_entries = []
+        
+        for node_dir in self.cache_dir.iterdir():
+            if node_dir.is_dir():
+                dir_size = 0
+                cached_at_file = node_dir / "cached_at.txt"
+                
+                # Get directory size
+                for file in node_dir.rglob('*'):
+                    if file.is_file():
+                        dir_size += file.stat().st_size
+                
+                total_size += dir_size
+                
+                # Get cache timestamp
+                cache_time = datetime.now()  # Default to now if no timestamp
+                if cached_at_file.exists():
+                    try:
+                        cache_time = datetime.fromisoformat(cached_at_file.read_text().strip())
+                    except:
+                        pass
+                
+                cache_entries.append({
+                    'path': node_dir,
+                    'size': dir_size,
+                    'time': cache_time
+                })
+        
+        # Check if we exceed the limit
+        size_limit_bytes = size_limit_mb * 1024 * 1024
+        if total_size <= size_limit_bytes:
+            return
+        
+        # Remove oldest entries until under limit
+        cache_entries.sort(key=lambda x: x['time'])  # Oldest first
+        
+        print(f"🗑️ Cache size {total_size // (1024*1024)}MB exceeds limit {size_limit_mb}MB, removing old entries...")
+        
+        for entry in cache_entries:
+            if total_size <= size_limit_bytes:
+                break
+            
+            try:
+                import shutil
+                shutil.rmtree(entry['path'])
+                total_size -= entry['size']
+                print(f"🗑️ Removed old cache: {entry['path'].name} ({entry['size'] // 1024} KB)")
+            except Exception as e:
+                print(f"Error removing cache {entry['path']}: {e}")
+
+    def cleanup_expired_cache(self):
+        """Remove cache entries older than expiry setting"""
+        expiry_days = self.cache_settings.get('expiry_days', -1)
+        if expiry_days == -1:  # Never expire
+            return
+        
+        if not self.cache_dir.exists():
+            return
+        
+        from datetime import timedelta
+        cutoff_date = datetime.now() - timedelta(days=expiry_days)
+        removed_count = 0
+        
+        for node_dir in self.cache_dir.iterdir():
+            if node_dir.is_dir():
+                cached_at_file = node_dir / "cached_at.txt"
+                
+                if cached_at_file.exists():
+                    try:
+                        cache_time = datetime.fromisoformat(cached_at_file.read_text().strip())
+                        if cache_time < cutoff_date:
+                            import shutil
+                            shutil.rmtree(node_dir)
+                            removed_count += 1
+                            print(f"🗑️ Expired cache removed: {node_dir.name}")
+                    except Exception as e:
+                        print(f"Error processing cache expiry for {node_dir}: {e}")
+        
+        if removed_count > 0:
+            print(f"🧹 Removed {removed_count} expired cache entries")
+
 
     def get_cached_status(self):
         """Get cached connection status to avoid repeated expensive operations"""
@@ -437,17 +966,94 @@ class NomadNetWebBrowser:
         except Exception as e:
             print(f"❌ File fetch failed: {str(e)}")
             return {"error": f"File fetch failed: {str(e)}", "content": b"", "status": "error"}
-                
+
     def fetch_page(self, node_hash, page_path="/page/index.mu", form_data=None):
         try:
-            print(f"🌐 Fetching {page_path} from {node_hash[:16]}...")
-            if form_data:
-                print(f"📝 With form data: {form_data}")
+            print(f"Fetching {page_path} from {node_hash[:16]}...")
+            
+            destination_hash = bytes.fromhex(node_hash.replace("<", "").replace(">", "").replace(":", ""))
+            
+            # Check for existing cached link first (like MeshChat does)
+            if hasattr(self, 'nomadnet_cached_links') and destination_hash in self.nomadnet_cached_links:
+                existing_link = self.nomadnet_cached_links[destination_hash]
+                if existing_link.status == RNS.Link.ACTIVE:
+                    print("Using existing cached link for page request")
+                    
+                    # Convert form data to field_ prefixed format (like NomadNetBrowser does)
+                    processed_form_data = {}
+                    if form_data:
+                        for key, value in form_data.items():
+                            # Add field_ prefix if not already present
+                            if not key.startswith("field_") and not key.startswith("var_"):
+                                processed_form_data[f"field_{key}"] = value
+                            else:
+                                processed_form_data[key] = value
+                        print(f"Processed form data: {processed_form_data}")
+                    
+                    # Start with processed form data
+                    final_form_data = processed_form_data.copy() if processed_form_data else {}
+                    
+                    # Add fingerprint data WITHOUT field_ prefix (special handling)
+                    if hasattr(existing_link, 'fingerprint_data') and existing_link.fingerprint_data:
+                        final_form_data.update(existing_link.fingerprint_data)
+                        print(f"Including fingerprint data (no field_ prefix): {existing_link.fingerprint_data}")
+                    
+                    print(f"Final form data being sent: {final_form_data}")
+                    
+                    # Actually make the request on the existing link
+                    result = {"data": None, "received": False}
+                    response_event = threading.Event()
+                    
+                    def on_response(receipt):
+                        try:
+                            if receipt.response:
+                                data = receipt.response
+                                if isinstance(data, bytes):
+                                    result["data"] = data.decode("utf-8")
+                                else:
+                                    result["data"] = str(data)
+                            else:
+                                result["data"] = "Empty response"
+                            result["received"] = True
+                            response_event.set()
+                        except Exception as e:
+                            result["data"] = f"Response error: {str(e)}"
+                            result["received"] = True
+                            response_event.set()
+                    
+                    def on_failed(receipt):
+                        result["data"] = "Request failed"
+                        result["received"] = True
+                        response_event.set()
+                    
+                    # Make the actual request on the cached link with combined data
+                    existing_link.request(page_path, data=final_form_data if final_form_data else None, 
+                                        response_callback=on_response, 
+                                        failed_callback=on_failed)
+                    
+                    # Wait for response
+                    success = response_event.wait(timeout=30)
+                    if success and result["received"]:
+                        return {"content": result["data"] or "Empty response", "status": "success", "error": None}
+                    else:
+                        return {"error": "Timeout", "content": "Request timeout on cached link", "status": "error"}
+            
+            # Only create new browser/link if no cached link exists
+            print("Creating new browser instance (no cached link available)")
             browser = NomadNetBrowser(self, node_hash)
-            response = browser.fetch_page(page_path, form_data)  # Pass the form_data parameter
+            response = browser.fetch_page(page_path, form_data)
+            
+            # Store the link in cache after successful creation
+            if response["status"] == "success" and hasattr(browser, 'link'):
+                if not hasattr(self, 'nomadnet_cached_links'):
+                    self.nomadnet_cached_links = {}
+                self.nomadnet_cached_links[destination_hash] = browser.link
+                print("Stored new link in cache")
+            
             return response
+            
         except Exception as e:
-            print(f"❌ Fetch failed: {str(e)}")
+            print(f"Fetch failed: {str(e)}")
             return {"error": f"Fetch failed: {str(e)}", "content": "", "status": "error"}
 
     def start_monitoring(self):
@@ -523,6 +1129,17 @@ class NomadNetWebBrowser:
         except Exception as e:
             print(f"Error getting path info to {destination_hash}: {e}")
             return {'hops': "Unknown", 'next_hop_interface': "Unknown"}
+
+    def send_fingerprint(self, node_hash):
+        """Send identity fingerprint to a NomadNet node"""
+        try:
+            print(f"NomadNetWebBrowser.send_fingerprint called for {node_hash[:16]}...")
+            browser = NomadNetBrowser(self, node_hash)
+            response = browser.send_fingerprint()
+            return response
+        except Exception as e:
+            print(f"Identity fingerprint send failed: {str(e)}")
+            return {"error": f"Identity fingerprint send failed: {str(e)}", "message": "", "status": "error"}
 
 # Initialize the browser
 browser = NomadNetWebBrowser()
@@ -666,6 +1283,20 @@ def api_download_file(node_hash):
 def favicon():
     return '', 204  # No content response
 
+@app.route('/api/fingerprint/<node_hash>', methods=['POST'])
+def api_send_fingerprint(node_hash):
+    """Send identity fingerprint to a NomadNet node"""
+    print(f"API Request: Sending identity fingerprint to {node_hash[:16]}...")
+    
+    response = browser.send_fingerprint(node_hash)
+    
+    if response["status"] == "success":
+        print(f"API Response: Identity fingerprint sent successfully")
+    else:
+        print(f"API Response: Identity fingerprint failed - {response.get('error', 'Unknown error')}")
+    
+    return jsonify(response)
+
 @app.route('/api/connection-status')
 def api_connection_status():
     try:
@@ -768,6 +1399,197 @@ def api_connection_status():
             "color": "red"
         })
 
+@app.route('/api/search-cache')
+def api_search_cache():
+    query = request.args.get('q', '').lower().strip()
+    if not query:
+        return jsonify([])
+    
+    results = []
+    cache_dir = browser.cache_dir
+    search_limit = browser.cache_settings.get('search_limit', 50)
+    
+    if cache_dir.exists():
+        for node_dir in cache_dir.iterdir():
+            if node_dir.is_dir():
+                name_file = node_dir / "node_name.txt"
+                node_name = name_file.read_text(encoding='utf-8') if name_file.exists() else "Unknown Node"
+                
+                # Search index.mu
+                index_file = node_dir / "index.mu"
+                if index_file.exists():
+                    try:
+                        content = index_file.read_text(encoding='utf-8', errors='ignore')
+                        if query in content.lower() or query in node_name.lower():
+                            snippet = f"Node name match: {node_name}\n\n" + extract_snippet(content, query) if query in node_name.lower() else extract_snippet(content, query)
+                            
+                            results.append({
+                                'node_hash': node_dir.name,
+                                'node_name': node_name,
+                                'snippet': snippet,
+                                'url': f"{node_dir.name}:/page/index.mu",
+                                'page_name': 'index.mu',
+                                'page_path': '/page/index.mu'
+                            })
+                            
+                            if len(results) >= search_limit:
+                                break
+                    except Exception as e:
+                        print(f"Error reading cache file {index_file}: {e}")
+                
+                # Search additional pages
+                pages_dir = node_dir / "pages"
+                if pages_dir.exists():
+                    for page_file in pages_dir.glob("*.mu"):
+                        if len(results) >= search_limit:
+                            break
+                        try:
+                            content = page_file.read_text(encoding='utf-8', errors='ignore')
+                            if query in content.lower():
+                                page_name = page_file.name
+                                snippet = extract_snippet(content, query)
+                                
+                                results.append({
+                                    'node_hash': node_dir.name,
+                                    'node_name': node_name,
+                                    'snippet': snippet,
+                                    'url': f"{node_dir.name}:/page/{page_name}",
+                                    'page_name': page_name,
+                                    'page_path': f'/page/{page_name}'
+                                })
+                        except Exception as e:
+                            print(f"Error reading additional page {page_file}: {e}")
+    
+    return jsonify(results)
+
+@app.route('/api/cache-settings', methods=['GET', 'POST'])
+def api_cache_settings():
+    if request.method == 'GET':
+        return jsonify(browser.cache_settings)
+    
+    data = request.json
+    action = data.get('action')
+    
+    if action == 'toggle_auto_cache':
+        browser.cache_settings['auto_cache_enabled'] = data.get('enabled', True)
+        
+    elif action == 'update_size_limit':
+        browser.cache_settings['size_limit_mb'] = data.get('value', 100)
+        
+    elif action == 'update_expiry':
+        browser.cache_settings['expiry_days'] = data.get('value', 30)
+        
+    elif action == 'update_search_limit':
+        browser.cache_settings['search_limit'] = data.get('value', 50)
+        
+    elif action == 'toggle_additional_pages':
+        browser.cache_settings['cache_additional'] = data.get('enabled', False)
+        
+    elif action == 'clear_cache':
+        import shutil
+        try:
+            if browser.cache_dir.exists():
+                shutil.rmtree(browser.cache_dir)
+                browser.cache_dir.mkdir(parents=True, exist_ok=True)
+            return jsonify({'message': 'Cache cleared successfully', 'status': 'success'})
+        except Exception as e:
+            return jsonify({'message': f'Error clearing cache: {e}', 'status': 'error'})
+    
+    elif action == 'refresh_cache':
+        count = 0
+        for node_data in browser.nomadnet_nodes.values():
+            browser.cache_queue.put((node_data['hash'], node_data['name']))
+            count += 1
+        return jsonify({'message': f'Queued {count} nodes for refresh', 'status': 'success'})
+    
+    elif action == 'cache_additional_all':
+        if not browser.cache_settings.get('cache_additional', False):
+            return jsonify({'message': 'Additional page caching is disabled', 'status': 'error'})
+        
+        count = 0
+        for node_dir in browser.cache_dir.iterdir():
+            if node_dir.is_dir():
+                node_hash = node_dir.name
+                name_file = node_dir / "node_name.txt"
+                node_name = name_file.read_text(encoding='utf-8') if name_file.exists() else "Unknown"
+                
+                # Queue for additional page caching
+                browser.additional_cache_queue.put((node_hash, node_name))
+                count += 1
+        
+        return jsonify({'message': f'Queued {count} nodes for additional page caching', 'status': 'success'})
+
+
+    # Save settings after any change
+    browser.save_cache_settings()
+    return jsonify({'status': 'success'})
+
+@app.route('/api/export-cache')
+def api_export_cache():
+    import zipfile
+    import io
+    
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        if browser.cache_dir.exists():
+            for node_dir in browser.cache_dir.iterdir():
+                if node_dir.is_dir():
+                    for file in node_dir.rglob('*'):
+                        if file.is_file():
+                            zip_file.write(file, file.relative_to(browser.cache_dir))
+    
+    zip_buffer.seek(0)
+    
+    return send_file(
+        io.BytesIO(zip_buffer.read()),
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='nomadnet_cache_export.zip'
+    )
+
+@app.route('/api/cache-stats')
+def api_cache_stats():
+    cache_dir = browser.cache_dir
+    node_count = 0
+    page_count = 0
+    total_size = 0
+    
+    if cache_dir.exists():
+        for node_dir in cache_dir.iterdir():
+            if node_dir.is_dir():
+                node_count += 1
+                for file in node_dir.rglob("*"):
+                    if file.is_file():
+                        page_count += 1
+                        total_size += file.stat().st_size
+    
+    return jsonify({
+        'node_count': node_count,
+        'page_count': page_count,
+        'cache_size': f"{total_size / 1024:.1f} KB"
+    })
+
+def extract_snippet(content, query, context_length=150):
+    """Extract text snippet around search term"""
+    lower_content = content.lower()
+    query_pos = lower_content.find(query.lower())
+    
+    if query_pos == -1:
+        # Query not in content, return beginning of content
+        return content[:context_length] + ("..." if len(content) > context_length else "")
+    
+    start = max(0, query_pos - context_length // 2)
+    end = min(len(content), query_pos + len(query) + context_length // 2)
+    
+    snippet = content[start:end]
+    if start > 0:
+        snippet = "..." + snippet
+    if end < len(content):
+        snippet = snippet + "..."
+    
+    return snippet
+    
 def start_server():
     """Automatically choose the best server available"""
     import platform

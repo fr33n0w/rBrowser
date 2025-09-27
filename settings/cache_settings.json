@@ -1,0 +1,7 @@
+{
+  "auto_cache_enabled": true,
+  "size_limit_mb": 50,
+  "expiry_days": 30,
+  "search_limit": 100,
+  "cache_additional": false
+}

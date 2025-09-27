@@ -33,7 +33,7 @@
                     <div style="text-align: center; padding: 20px; color: #d2d7df; font-size: 12px;">Scanning for nodes...</div>
                 </div>
             </div>
-            <div class="status-bar" style="position: absolute !important; bottom: 0 !important; left: 0 !important; right: 0 !important; padding: 4px 8px !important; margin: 0 !important; font-size: 12px !important; line-height: 1.1 !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important; box-sizing: border-box !important;">
+            <div class="status-bar" style="position: absolute !important; bottom: 0 !important; left: 0 !important; right: 0 !important; padding: 4px 8px !important; margin: 0 !important; font-size: 11px !important; line-height: 1.1 !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important; box-sizing: border-box !important;">
                 Status:<span class="status-indicator" id="connection-status"><strong> ● Initializing...</strong></span><br>
                 Total Announces: <span class="count" id="announce-count">0</span> - NomadNet Nodes: <span class="count" id="node-count">0</span>                
             </div>
@@ -44,6 +44,7 @@
                     <!-- Tabs will be dynamically created here -->
                 </div>
                 <button class="new-tab-btn" onclick="createNewTab()">+ New Tab</button>
+                <button class="search-tab-btn" onclick="createSearchTab()" title="Search cached pages">🔍 Search Engine</button>
             </div>
             <div class="tab-content-wrapper" id="tab-content-wrapper">
                 <!-- Each tab will have its own content area -->
@@ -62,7 +63,9 @@
                 <button class="nav-btn home-btn" onclick="navigateHome()" title="Go to home page">🏠</button>
             </div>
             <input type="text" class="address-bar" id="address-bar" placeholder="Enter NomadNet URL (hash:/path/to/page.mu)" onkeypress="handleAddressBarEnter(event)">
-            <button class="go-btn" onclick="navigateToUrl()">Go</button>
+            <button class="go-btn" onclick="navigateToUrl()" title="Navigate to page">Go</button>
+            <button class="fingerprint-btn" onclick="sendFingerprintToCurrentNode()" title="Send fingerprint to current node">ID</button>
+
         </div>
 
         <div class="header">
@@ -84,14 +87,13 @@
 
         <div class="shortcuts-bar">
             <span class="shortcut-item">
-                <kbd>Alt + N</kbd> Open New Tab
+                ↳ <kbd>Alt + N</kbd> Open New Tab
             </span>
             <span class="shortcut-item">
                 <kbd>Alt + X</kbd> Close Current Tab
             </span>
             <span class="shortcut-item">
                 <kbd>Alt + B</kbd> Reload Current Page
-            </span>
             </span>
             <span class="shortcut-item">
                 <kbd>Alt + F</kbd> Add current page to favorites
@@ -102,9 +104,10 @@
             <span class="shortcut-item">
                 <kbd>Ctrl + X</kbd> Close all other tabs
             </span>
-                        <span class="shortcut-item">
-                <kbd>Up or Down arrows</kbd> Scroll page
-            </span>
+            <span class="shortcut-item">
+                <kbd>Alt + I</kbd> Send Fingerprint 
+            </span>⇅
+
         </div>
 
     </div>
@@ -315,6 +318,8 @@ function getActiveTab() {
     return tabs.find(t => t.id === activeTabId);
 }
 
+// Favorites system //
+
 function showAddFavoriteDialog() {
     const input = prompt("Enter NomadNet address (hash:/path/to/page.mu or just hash for node):");
     if (!input) return;
@@ -402,6 +407,8 @@ function addFavoriteFromUrl() {
     updateNodes();
 
 }
+
+// Navigation bar
 
 function navigateBackTab() {
     const tab = getActiveTab();
@@ -809,6 +816,143 @@ function addHomeButtonToExistingTabs() {
             refreshBtn.insertAdjacentElement('afterend', homeBtn);
         }
     });
+}
+
+// Fingerprint functions system
+
+function sendFingerprintToNode(hash, name) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10001;
+        background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        background: #161b22; border: 2px solid #30363d; color: #e6edf3;
+        padding: 20px; border-radius: 8px; max-width: 400px; min-width: 300px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    `;
+    
+    dialog.innerHTML = `
+        <div style="margin-bottom: 16px; line-height: 1.5; font-size: 14px;">
+            Send your identity fingerprint to this node?<br><br>
+            <strong>Node:</strong> ${name}<br>
+            <strong>Hash:</strong> ${hash}<br><br>
+            This will transmit your identity directly to the remote host. The node operator will be able to see your RNS identity hash and LXMF address.
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <button id="cancel-btn" style="
+                background: #6e7681; color: white; border: none; 
+                padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px;
+            ">Cancel</button>
+            <button id="send-btn" style="
+                background: #7c3aed; color: white; border: none; 
+                padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px;
+            ">Send</button>
+        </div>
+    `;
+    
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    
+    dialog.querySelector('#send-btn').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        performFingerprintSend(hash, name);
+    });
+    
+    dialog.querySelector('#cancel-btn').addEventListener('click', () => {
+        document.body.removeChild(overlay);
+    });
+    
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    });
+    
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            document.removeEventListener('keydown', escapeHandler);
+            if (overlay.parentNode) {
+                document.body.removeChild(overlay);
+            }
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+}
+
+function performFingerprintSend(hash, name) {
+    // Show immediate feedback
+    const notification = showNotification(
+        `Sending identity fingerprint to ${name}...<br>Please wait while your identity is transmitted.`,
+        'info',
+        10000  // Long duration since this might take time
+    );
+
+    fetch(`/api/fingerprint/${hash}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Remove the sending notification
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+
+        if (data.status === 'success') {
+            showNotification(
+                `Identity fingerprint sent successfully to ${name}!<br><br><strong>Response:</strong> ${data.message || 'Identity transmitted'} <br><br>Page Reloaded!`,
+                'success',
+                7000
+            );
+            
+            // Reload the current page like MeshChat does
+            // This allows the remote node to show the identity data on refresh
+            setTimeout(() => {
+                refreshPageTab();
+            }, 1000);
+            
+        } else {
+            showNotification(
+                `Failed to send identity fingerprint to ${name}<br><br><strong>Error:</strong> ${data.error || 'Unknown error'}`,
+                'error',
+                8000
+            );
+        }
+    })
+    .catch(error => {
+        // Remove the sending notification
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+
+        console.error('Identity fingerprint send error:', error);
+        showNotification(
+            `Network error sending identity fingerprint to ${name}<br><br><strong>Error:</strong> ${error.message}`,
+            'error',
+            6000
+        );
+    });
+}
+
+function sendFingerprintToCurrentNode() {
+    const tab = getActiveTab();
+    if (!tab || !tab.selectedNode) {
+        showNotification(
+            'No current node selected for fingerprint',
+            'warning',
+            4000
+        );
+        return;
+    }
+
+    const nodeName = tab.knownNodeName || getNodeName(tab.selectedNode);
+    sendFingerprintToNode(tab.selectedNode, nodeName);
 }
 
 function fetchPageByUrlTab(hash, path, originalUrl) {
@@ -1302,7 +1446,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     }
                     
                     lastNodesHash = nodesHash;
-                    console.log('Node list changed, rebuilding DOM');
                     
                     cachedNodes = nodes;
                     console.log('Cached nodes updated:', cachedNodes.length, 'nodes');
@@ -1852,6 +1995,11 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                         e.preventDefault();
                         addFavoriteFromUrl();
                         break;
+                    case 'i':
+                        e.preventDefault();
+                        sendFingerprintToCurrentNode();
+                        break;
+
                 }
             }
         });
@@ -1981,6 +2129,356 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             }, 30000);
         }
 
+// Cached Search Engine system
+
+// Add this to your existing JavaScript
+function createSearchTab() {
+    const searchTabId = 'search-tab';
+    
+    // Don't create if already exists
+    if (document.getElementById(searchTabId)) {
+        switchToTab(searchTabId);
+        return;
+    }
+    
+    // Create search tab object
+    const searchTab = new BrowserTab(searchTabId);
+    searchTab.title = '🔍 Search Engine';
+    searchTab.isSearchTab = true;
+    tabs.push(searchTab);
+    
+    createTabElement(searchTab);
+    createSearchTabContent(searchTab);
+    switchToTab(searchTabId);
+}
+
+function createSearchTabContent(tab) {
+    const wrapper = document.getElementById('tab-content-wrapper');
+    const content = document.createElement('div');
+    content.className = 'tab-content';
+    content.id = tab.id;
+    
+    content.innerHTML = `
+        <div class="search-interface" style="padding: 20px; margin: 0; height: 100%; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <h2 style="color: #f0f6fc; margin: 0;">🔍 NomadNet Page Search</h2>
+                    <p style="color: #7d8590; margin: 3px 0 0 0;">Search through cached pages from announced nodes</p>
+                </div>
+                <button id="toggle-settings-btn" onclick="toggleSearchSettings()" 
+                        style="background: #21262d; border: 1px solid #30363d; color: #e6edf3; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
+                    ⚙️ Show Settings
+                </button>
+            </div>
+            
+            <!-- Settings Panel (Hidden by default) -->
+            <div id="search-settings-panel" style="display: none; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+                <h3 style="color: #f0f6fc; margin: 0 0 15px 0;">Search Engine Settings</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    
+                    <!-- Left Column -->
+                    <div>
+                        <label style="display: flex; align-items: center; margin-bottom: 10px; color: #e6edf3;">
+                            <input type="checkbox" id="auto-cache-enabled" checked onchange="toggleAutoCaching()">
+                            <span style="margin-left: 8px;">Enable Search Engine (Auto-Caching index.mu)</span>
+                        </label>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label style="color: #e6edf3; display: block; margin-bottom: 5px;">Cache Size Limit:</label>
+                            <select id="cache-size-limit" onchange="updateCacheSizeLimit()" style="background: #0d1117; border: 1px solid #30363d; color: #e6edf3; padding: 5px; border-radius: 3px; width: 100%;">
+                                <option value="50">50 MB</option>
+                                <option value="100" selected>100 MB</option>
+                                <option value="200">200 MB</option>
+                                <option value="500">500 MB</option>
+                                <option value="-1">Unlimited</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <label style="color: #e6edf3; display: block; margin-bottom: 5px;">Auto-delete cache older than:</label>
+                            <select id="cache-expiry" onchange="updateCacheExpiry()" style="background: #0d1117; border: 1px solid #30363d; color: #e6edf3; padding: 5px; border-radius: 3px; width: 100%;">
+                                <option value="-1">Never</option>
+                                <option value="7">7 days</option>
+                                <option value="30" selected>30 days</option>
+                                <option value="90">90 days</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column -->
+                    <div>
+                        <div style="margin-bottom: 10px;">
+                            <label style="color: #e6edf3; display: block; margin-bottom: 5px;">Search Result Limit Per Search:</label>
+                            <input type="number" id="search-result-limit" value="50" min="10" max="200" onchange="updateSearchLimit()" 
+                                   style="background: #0d1117; border: 1px solid #30363d; color: #e6edf3; padding: 5px; border-radius: 3px; width: 100%;">
+                        </div>
+                        
+                        <label style="display: flex; align-items: center; margin-bottom: 10px; color: #e6edf3;">
+                            <input type="checkbox" id="cache-additional-pages" onchange="toggleAdditionalPages()">
+                            <span style="margin-left: 8px;">Cache additional pages (home, about, menu, info, etc.)</span>
+                        </label>
+                        
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px;">
+                            <button onclick="clearAllCache()" style="background: #da3633; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                Clear All Cached Pages
+                            </button>
+                            <button onclick="refreshAllCache()" style="background: #0969da; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                Refresh All Cached Pages
+                            </button>
+                            <button onclick="exportCache()" style="background: #238636; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                Export Full Cache in Zip File (Download)
+                            </button>
+                            <button onclick="cacheAdditionalForAll()" style="background: #7c3aed; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                Start Manual Caching of Additional Pages for All Nodes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin: 20px 0; display: flex; gap: 10px;">
+                <input type="text" id="cache-search-input" placeholder="Enter search terms..." 
+                       style="flex: 1; padding: 12px; font-size: 16px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 4px;"
+                       onkeypress="if(event.key==='Enter') searchCachedPages()">
+                <button onclick="searchCachedPages()" 
+                        style="padding: 12px 20px; background: #0969da; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Search
+                </button>
+            </div>
+            
+            <div id="search-results" style="
+                flex: 1; 
+                overflow-y: auto; 
+                margin-top: 20px; 
+                min-height: calc(100vh - 250px);
+                max-height: calc(100vh - 250px);
+                border: 1px solid #30363d;
+                border-radius: 6px;
+                padding: 10px;
+                background: #0d1117;
+            "></div>
+            
+            <div id="cache-stats" style="margin-top: 15px; color: #7d8590; font-size: 12px; flex-shrink: 0;"></div>
+        </div>
+    `;
+    
+    wrapper.appendChild(content);
+    loadCacheSettings();
+    loadCacheStats();
+}
+
+// Settings Functions
+function toggleSearchSettings() {
+    const panel = document.getElementById('search-settings-panel');
+    const btn = document.getElementById('toggle-settings-btn');
+    
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        btn.textContent = '⚙️ Hide Settings';
+    } else {
+        panel.style.display = 'none';
+        btn.textContent = '⚙️ Settings';
+    }
+}
+
+function toggleAutoCaching() {
+    const enabled = document.getElementById('auto-cache-enabled').checked;
+    fetch('/api/cache-settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'toggle_auto_cache', enabled: enabled})
+    });
+    showNotification(enabled ? 'Auto-caching enabled' : 'Auto-caching disabled', 'success');
+}
+
+function clearAllCache() {
+    if (confirm('Are you sure you want to delete all cached pages? This cannot be undone.')) {
+        fetch('/api/cache-settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'clear_cache'})
+        })
+        .then(r => r.json())
+        .then(data => {
+            showNotification(data.message, 'success');
+            loadCacheStats();
+        });
+    }
+}
+
+function refreshAllCache() {
+    if (confirm('Re-cache all nodes? This may take time and generate network traffic.')) {
+        fetch('/api/cache-settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'refresh_cache'})
+        })
+        .then(r => r.json())
+        .then(data => {
+            showNotification(data.message, 'info');
+        });
+    }
+}
+
+function loadCacheSettings() {
+    fetch('/api/cache-settings')
+        .then(r => r.json())
+        .then(settings => {
+            document.getElementById('auto-cache-enabled').checked = settings.auto_cache_enabled;
+            document.getElementById('cache-size-limit').value = settings.size_limit_mb;
+            document.getElementById('cache-expiry').value = settings.expiry_days;
+            document.getElementById('search-result-limit').value = settings.search_limit;
+            document.getElementById('cache-additional-pages').checked = settings.cache_additional;
+        })
+        .catch(() => {
+            // Use defaults if settings not available
+        });
+}
+
+async function searchCachedPages() {
+    const query = document.getElementById('cache-search-input').value.trim();
+    if (!query) return;
+    
+    const resultsDiv = document.getElementById('search-results');
+    resultsDiv.innerHTML = '<div style="color: #58a6ff; padding: 20px;">Searching...</div>';
+    
+    try {
+        const response = await fetch(`/api/search-cache?q=${encodeURIComponent(query)}`);
+        const results = await response.json();
+        
+        displaySearchResults(results, query);
+    } catch (error) {
+        resultsDiv.innerHTML = `<div style="color: #ff7b72; padding: 20px;">Search failed: ${error.message}</div>`;
+    }
+}
+
+function displaySearchResults(results, query) {
+    const resultsDiv = document.getElementById('search-results');
+    
+    if (results.length === 0) {
+        resultsDiv.innerHTML = `
+            <div style="color: #7d8590; padding: 20px; text-align: center;">
+                <h3>No results found for "${query}"</h3>
+                <p>Try different search terms or browse more nodes to expand the cache.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `<h3 style="color: #f0f6fc; margin-bottom: 15px;">Found ${results.length} result(s) for "${query}"</h3>`;
+    
+    results.forEach(result => {
+        html += `
+            <div style="background: #21262d; border: 1px solid #30363d; padding: 15px; margin: 10px 0; border-radius: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                    <h4 style="color: #58a6ff; margin: 0; font-size: 16px;">${escapeHtml(result.node_name)}</h4>
+                    <button onclick="browseToSearchResult('${result.url}')" 
+                            style="background: #0969da; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        Open
+                    </button>
+                </div>
+                <div style="color: #7d8590; font-size: 12px; font-family: monospace; margin-bottom: 8px;">
+                    Node Address: <span style="color: #ffffff;">${result.node_hash}</span> • Result from page: <span style="color: #ffa657;">${result.page_path}</span>
+                </div>
+                <div style="color: #e6edf3; line-height: 1.5; background: #0d1117; padding: 10px; border-radius: 4px; font-size: 13px;">
+                    ${escapeHtml(result.snippet)}
+                </div>
+            </div>
+        `;
+    });
+    
+    resultsDiv.innerHTML = html;
+}
+
+function updateCacheSizeLimit() {
+    const limit = document.getElementById('cache-size-limit').value;
+    fetch('/api/cache-settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'update_size_limit', value: parseInt(limit)})
+    });
+}
+
+function updateCacheExpiry() {
+    const expiry = document.getElementById('cache-expiry').value;
+    fetch('/api/cache-settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'update_expiry', value: parseInt(expiry)})
+    });
+}
+
+function updateSearchLimit() {
+    const limit = document.getElementById('search-result-limit').value;
+    fetch('/api/cache-settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'update_search_limit', value: parseInt(limit)})
+    });
+}
+
+function toggleAdditionalPages() {
+    const enabled = document.getElementById('cache-additional-pages').checked;
+    console.log('Toggling additional pages to:', enabled);
+    
+    fetch('/api/cache-settings', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'toggle_additional_pages', enabled: enabled})
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Server response:', data);
+        showNotification(enabled ? 'Additional page caching enabled' : 'Additional page caching disabled', 'success');
+    })
+    .catch(error => {
+        console.error('Error updating setting:', error);
+    });
+}
+
+function cacheAdditionalForAll() {
+    if (confirm('Cache additional pages for all existing nodes? This may take time.')) {
+        fetch('/api/cache-settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'cache_additional_all'})
+        })
+        .then(r => r.json())
+        .then(data => {
+            showNotification(data.message, 'info');
+        });
+    }
+}
+
+function exportCache() {
+    window.open('/api/export-cache', '_blank');
+}
+
+function browseToSearchResult(url) {
+    // Create new tab and navigate to the result
+    const newTab = createNewTab();
+    const addressBar = document.querySelector(`#${newTab.id} .address-bar`);
+    if (addressBar) {
+        addressBar.value = url;
+        navigateToUrlTab();
+    }
+}
+
+async function loadCacheStats() {
+    try {
+        const response = await fetch('/api/cache-stats');
+        const stats = await response.json();
+        
+        document.getElementById('cache-stats').innerHTML = `
+            Cached nodes: ${stats.node_count} | 
+            Total pages: ${stats.page_count} | 
+            Cache size: ${stats.cache_size}
+        `;
+    } catch (error) {
+        document.getElementById('cache-stats').innerHTML = 'Cache stats unavailable';
+    }
+}
+
     document.addEventListener('DOMContentLoaded', async function() {
         console.log('NomadNet Browser starting...');
         await initializeMicronParser();
@@ -2019,6 +2517,17 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 const name = nodeItem.getAttribute('data-name');
                 browseNode(hash, name);
             }
+
+            if (e.target.classList.contains('fingerprint-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const hash = e.target.getAttribute('data-hash');
+                const name = e.target.getAttribute('data-name');
+                sendFingerprintToNode(hash, name);
+                return;
+            }
+
         });
 
         createNewTab();
