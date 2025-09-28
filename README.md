@@ -2,6 +2,11 @@
 
 -----
 
+Screenshots:
+
+<img width="1920" height="1080" alt="lastv1" src="https://github.com/user-attachments/assets/3f753eed-49c5-4d89-820b-e1dc1a8cb383" />
+
+
 <img width="1920" height="1080" alt="newlastscreen" src="https://github.com/user-attachments/assets/2feb79a7-ac9e-4b3c-a94e-75ba35a5c8b8" />
 
 
@@ -206,5 +211,7 @@ External software and all their rights are owned by the respective developers.
 -----
 
 # rBrowser v1.0
+
+<img width="1920" height="1080" alt="lastv1_2" src="https://github.com/user-attachments/assets/876de5e2-fb27-4cfd-b01e-51ebf560539e" />
 
 ## Developed with love by Franky & Thomas 
