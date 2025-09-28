@@ -1655,6 +1655,7 @@ def extract_snippet(content, query, context_length=150):
 
 def start_server():
     import platform
+    import logging
     
     if platform.system() == "Windows":
         try:
@@ -1664,19 +1665,12 @@ def start_server():
         except ImportError:
             pass
     
-    # Use Werkzeug (already installed with Flask)
-    try:
-        from werkzeug.serving import run_simple
-        os.environ['WERKZEUG_RUN_MAIN'] = 'true'  # Suppress warning
-        print("🚀 Local Web Interface served with Werkzeug...")
-        run_simple('0.0.0.0', 5000, app, threaded=True, use_reloader=False)
-        return
-    except ImportError:
-        pass
+    # Suppress werkzeug logs
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
     
-    # Fallback to Flask
+    print("🚀 Local Web Interface served with Flask development server...")
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
-
+    
 def main():
     """
     Main function with improved error handling and status management
