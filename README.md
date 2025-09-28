@@ -195,6 +195,7 @@ If you find bugs or any other issue, feel free to contact the developer on Retic
 - If disconnected, verify that the python script is running
 - Verify your RNS config carefully before running the script
 - Check critical logs in terminal, logs are shown from the Reticulum instance log into the script terminal.
+- ** On Error: **: Failed to initialize: Attempt to reinitialise Reticulum, when it was already running , make sure to close other running reticulum process or instance
 
 -----
 
