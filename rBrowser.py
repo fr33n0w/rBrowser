@@ -1667,6 +1667,7 @@ def start_server():
     # Use Werkzeug (already installed with Flask)
     try:
         from werkzeug.serving import run_simple
+        os.environ['WERKZEUG_RUN_MAIN'] = 'true'  # Suppress warning
         print("🚀 Local Web Interface served with Werkzeug...")
         run_simple('0.0.0.0', 5000, app, threaded=True, use_reloader=False)
         return
