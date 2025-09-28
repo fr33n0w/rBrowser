@@ -1652,55 +1652,28 @@ def extract_snippet(content, query, context_length=150):
         snippet = snippet + "..."
     
     return snippet
-    
+
 def start_server():
-    """Automatically choose the best server available"""
     import platform
     
-    # Try Waitress first on Windows
     if platform.system() == "Windows":
         try:
             from waitress import serve
-            print("🚀 Local Web Interface served with Waitress (Windows optimized)...")
-            print("📝 Web Server Access logs disabled for cleaner terminal output")
-            print("✅ Interface started, Waiting for NomadNet announces... ")
-            print("=" * 90)
             serve(app, host='0.0.0.0', port=5000, threads=8)
             return
         except ImportError:
             pass
     
-    # Try Gunicorn on Unix/Linux
+    # Use Werkzeug (already installed with Flask)
     try:
-        import gunicorn.app.wsgiapp as wsgi
-        # Configure gunicorn to suppress access logs
-        sys.argv = [
-            'gunicorn',
-            '--bind', '0.0.0.0:5000',
-            '--workers', '4',
-            '--access-logfile', '/dev/null',  # Disable access logs
-            '--error-logfile', '-',           # Errors to stderr
-            '--log-level', 'warning',         # Only warnings and errors
-            f'{os.path.basename(__file__).split(".")[0]}:app'
-        ]
-        print("🚀 Local Web Interface served with Gunicorn for optimal performance...")
-        print("📝 Web Server Access logs disabled for cleaner terminal output")
-        print("✅ Interface started, Waiting for NomadNet announces... ")
-        print("=" * 90)
-        wsgi.run()
+        from werkzeug.serving import run_simple
+        print("🚀 Local Web Interface served with Werkzeug...")
+        run_simple('0.0.0.0', 5000, app, threaded=True, use_reloader=False)
         return
     except ImportError:
         pass
     
-    # Fallback to Flask development server
-    system_name = platform.system()
-    if system_name == "Windows":
-        print("⚠️  Waitress not found - using Flask development server")
-        print("   For better performance on Windows: pip install waitress")
-    else:
-        print("⚠️  Gunicorn not found - using Flask development server")
-        print("   For better performance: pip install gunicorn")
-    
+    # Fallback to Flask
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
 
 def main():
