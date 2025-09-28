@@ -14,7 +14,7 @@ A standalone web-based UI browser for exploring NomadNetwork Nodes and Pages ove
 
 This browser automatically discovers NomadNet nodes through network announces and provides a user-friendly interface for browsing distributed content with Micron markup support.
 
-It includes some exclusive features like: Automatic listening for announce, Add nodes to favorite list, browse and render any kind of NomadNet links, download files from remote node hosts, unique local NomadNet Search Engine feature included!  
+It includes some exclusive features like: Automatic listening for announce, Add nodes to favorites, browse and render any kind of NomadNet links, download files from remote nodes, unique local NomadNet Search Engine and more...
 
 -----
 
@@ -102,7 +102,7 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 - `hash:/page/index.mu` - Direct hash with page path
 - `nomadnetwork://hash/page/index.mu` - Full protocol URL
 - `hash` - Hash only (defaults to `/page/index.mu`)
-- `:page/index.mu`field`content` - Pages with input field in URL (some unique customized urls can not always work)
+- `:page/index.mu`field`content` - Pages with input field in URL
 
 ### Navigation
 
@@ -112,6 +112,8 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 - **Node Sidebar**: Click any discovered node to browse
 - **Link Clicking**: Click links within Micron content to navigate
 - **Add Favorites**: Save your favorite nodes and recall them later
+- **Search Page or Content**: Use the included NomadNet Search Engine to discover content
+- **Identify to remote nodes**: Send fingerprint to identify to remote nodes (send identity and LXMF address)
 
 ### Pages View Mode:
 
@@ -155,9 +157,9 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 
 ## Known Issues:
 
-- Sometimes Input box parameter sending is failing on some nodes with non-standard nomadnet micron format, due to the user fields customization  (but 95% of the nodes are perfectly working!)
+- Sometimes Input box parameter sending is failing on some nodes with non-standard nomadnet micron link format, due to unique user fields customization  (95% of the nodes page are perfectly working!)
 
-If you find bugs, feel free to contact the developer on Reticulum at: LXMF Address: 0d051f3b6f844380c3e0c5d14e37fac8
+If you find bugs or any other issue, feel free to contact the developer on Reticulum at: LXMF Address: 0d051f3b6f844380c3e0c5d14e37fac8
 
 -----
 
@@ -167,6 +169,7 @@ If you find bugs, feel free to contact the developer on Reticulum at: LXMF Addre
 - Reticulum configuration is stored in the default location (`~/.reticulum/`)
 - The application runs as a single-page application with AJAX content loading
 - Fallback Micron parser is included if the original parser fails to load
+- Detailed logs are printed by the python script in the terminal
 
 -----
 
@@ -187,13 +190,34 @@ If you find bugs, feel free to contact the developer on Reticulum at: LXMF Addre
 - Check browser console for JavaScript errors
 - Try toggling to Raw View to see source content
 
+**In case of disconnections from network**
+- Chech the bottom left status bar for connection info and status
+- If disconnected, verify that the python script is running
+- Verify your RNS config carefully before running the script
+- Check critical logs in terminal, logs are shown from the Reticulum instance log into the script terminal.
+
+-----
+
+## Warning:
+
+The included Search Engine generates network traffic when enabled, by requesting remote pages. It requests by default only the index.mu page but you can try to fetch more pages with "Cache additional pages" in the Search Engine settings. 
+
+**IF YOU ARE USING LORA INTERFACE, DISABLE THE SEARCH ENGINE** (TO AVOID CONSUMING ALL THE AIRTIME AND GENERATING UNWANTED NETWORK TRAFFIC.)
+
+-----
 ## License
 
-This project is open source. Please refer to the LICENSE file for details.
+This project is open source. Use it and share freely. Please mention the official project link.
+
+Please refer to the LICENSE file for details.
+
+-----
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
+
+-----
 
 ## External dependencies:
 
@@ -229,4 +253,4 @@ External software and all their rights are owned by the respective developers.
 
 -----
 
-# Developed with love by Franky & Thomas ❤️
+# ❤️ Developed with love by Franky & Thomas ❤️
