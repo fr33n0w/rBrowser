@@ -627,7 +627,7 @@ class NomadNetWebBrowser:
             except Exception as e:
                 print(f"❌ Failed to cache additional page {page_path}: {e}")
 
-                
+                    
     def init_reticulum(self):
         try:
             # Set initial connecting state
@@ -635,7 +635,40 @@ class NomadNetWebBrowser:
             
             print("🔗 Connecting to Reticulum...")
             RNS.loglevel = RNS.LOG_CRITICAL
-            self.reticulum = RNS.Reticulum()
+            
+            # Check if Reticulum is already initialized
+            try:
+                # Try to get existing instance first
+                if hasattr(RNS.Reticulum, 'get_instance'):
+                    self.reticulum = RNS.Reticulum.get_instance()
+                    if self.reticulum:
+                        print("🔄 Using existing Reticulum instance")
+                    else:
+                        # Create new instance if none exists
+                        self.reticulum = RNS.Reticulum()
+                else:
+                    # Fallback for older RNS versions
+                    self.reticulum = RNS.Reticulum()
+                    
+            except Exception as e:
+                # If get_instance fails or doesn't exist, handle the reinitialize error
+                if "reinitialise" in str(e).lower() or "already running" in str(e).lower():
+                    print("⚠️ Reticulum already running - attempting to use existing instance...")
+                    # Try to work with the existing instance
+                    try:
+                        self.reticulum = RNS.Reticulum.get_instance()
+                        if not self.reticulum:
+                            print("❌ Cannot access existing Reticulum instance")
+                            print("   Try killing all Python processes first: sudo pkill python3")
+                            sys.exit(1)
+                        print("✅ Connected to existing Reticulum instance")
+                    except:
+                        print("❌ Failed to connect to existing Reticulum instance")
+                        print("   Please restart the Pi or kill existing Reticulum processes")
+                        sys.exit(1)
+                else:
+                    print(f"❌ Reticulum initialization failed: {e}")
+                    sys.exit(1)
             
             identity_path = "nomadnet_browser_identity"
             if os.path.exists(identity_path):
