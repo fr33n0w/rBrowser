@@ -74,6 +74,38 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 
    You don't need to run rns manually, just make sure your instance is working and can connect to Reticulum Network!
 
+---
+
+## Docker & Docker Compose
+
+This repository includes a Dockerfile and a docker-compose.yaml so you can run rBrowser in a container. The compose setup builds the image and exposes the web UI on port 5000.
+
+Quick start (from repo root):
+```bash
+# build and start in background
+docker compose up -d
+
+# follow logs
+docker compose logs -f rbrowser
+
+# rebuild image and restart
+docker compose build --no-cache rbrowser
+docker compose up -d
+```
+
+Open the UI at: http://localhost:5000
+
+Notes:
+- The Dockerfile copies a repository `config` file into the container at /home/appuser/.reticulum/config. Ensure you have a valid Reticulum config file named `config` in the repo root before building, or mount your config at runtime:
+  - Example volume override in docker-compose.yaml:
+    volumes:
+      - ./config:/home/appuser/.reticulum/config:ro
+- Use `docker compose ps` to check service and healthcheck status (compose file includes a basic HTTP healthcheck).
+- Stop and remove containers with:
+```bash
+docker compose down
+```
+
 -----
 
 ## Running the Browser

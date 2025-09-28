@@ -1,1 +1,3 @@
 nomadnet_browser_identity
+cache/
+__pycache__/
