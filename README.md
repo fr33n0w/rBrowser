@@ -2,13 +2,8 @@
 
 -----
 
-Screenshots:
 
 <img width="1920" height="1080" alt="lastv1" src="https://github.com/user-attachments/assets/3f753eed-49c5-4d89-820b-e1dc1a8cb383" />
-
-
-<img width="1920" height="1080" alt="newlastscreen" src="https://github.com/user-attachments/assets/2feb79a7-ac9e-4b3c-a94e-75ba35a5c8b8" />
-
 
 
 -----
@@ -18,6 +13,8 @@ Screenshots:
 A standalone web-based UI browser for exploring NomadNetwork Nodes and Pages over Reticulum Network. 
 
 This browser automatically discovers NomadNet nodes through network announces and provides a user-friendly interface for browsing distributed content with Micron markup support.
+
+It includes some exclusive features like: Automatic listening for announce, Add nodes to favorite list, browse and render any kind of NomadNet links, download files from remote node hosts, unique local NomadNet Search Engine feature included!  
 
 -----
 
@@ -31,6 +28,12 @@ This browser automatically discovers NomadNet nodes through network announces an
 - **Link Navigation**: Click on links within Micron content to navigate between pages
 - **Connection Status**: Real-time display of network status and discovered pages / announced nodes
 - **File download support**: Download files hosted on nomadnet nodes
+- **NomadNet Search Endinge**: Unique search engine system to search in local auto-cached pages if enabled
+- **Add To Favorites**: Favorite system with star button synched across the whole UI tabs
+- **Node Info**: Extended node info for remote node hosting page in the node list
+- **Fingerprint**: Allow to identify with identity and LXMF address to remote host with a button
+- **Notifications & Logs**: Comprehensive Notifications info box in the web ui + full operational log in the terminal 
+- **And more......**: Download rBrowser and try it now!!
 
 ## Requirements
 
@@ -152,7 +155,7 @@ This browser automatically discovers NomadNet nodes through network announces an
 
 ## Known Issues:
 
-- Input box parameter sending is failing on some nodes with non-standard nomadnet micron format. due to the user fields customization  (95% of the nodes are perfectly working!)
+- Sometimes Input box parameter sending is failing on some nodes with non-standard nomadnet micron format, due to the user fields customization  (but 95% of the nodes are perfectly working!)
 
 If you find bugs, feel free to contact the developer on Reticulum at: LXMF Address: 0d051f3b6f844380c3e0c5d14e37fac8
 
@@ -212,6 +215,18 @@ External software and all their rights are owned by the respective developers.
 
 # rBrowser v1.0
 
-<img width="1920" height="1080" alt="lastv1_2" src="https://github.com/user-attachments/assets/876de5e2-fb27-4cfd-b01e-51ebf560539e" />
+##Screenshots:
 
-## Developed with love by Franky & Thomas 
+### Example of link navigation with input field requests:
+<img width="1920" height="1080" alt="lastv1_2" src="https://github.com/user-attachments/assets/9c5c4335-2ad9-4367-9c2f-2fcd5cc6693d" />
+
+### Example of Extended Node Informations:
+<img width="1920" height="1080" alt="lastv1_3" src="https://github.com/user-attachments/assets/5ede3dd3-9e39-433d-ac6d-19b87549ee3f" />
+
+### Example of the included Search Engine feature:
+<img width="1920" height="1080" alt="lastv1_4" src="https://github.com/user-attachments/assets/c1636e8f-860b-4e0a-867f-568eacd186d7" />
+<img width="1920" height="1080" alt="search" src="https://github.com/user-attachments/assets/f00b815a-ce6e-4831-aa53-b64ce3a36c73" />
+
+-----
+
+# Developed with love by Franky & Thomas ❤️
