@@ -331,9 +331,8 @@ This project includes local available versions of:
 
 The Web UI is served by:
 
-- Flask (developer web server, default if others are missing)
-- waitress (Production web server for windows)
-- gunicorn (Production web server for linux) 
+- Flask (developer web server, default in case waitress is missing)
+- Waitress (Production web server for windows / linux)
 
 
 External software and all their rights are owned by the respective developers. 
