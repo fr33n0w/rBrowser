@@ -55,6 +55,8 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 
 ## Installation
 
+## Option 1: Run from terminal
+
 1. **Clone the repository:**
 
    ```bash
@@ -76,7 +78,7 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 
 ---
 
-## Docker & Docker Compose
+## Option 2: Docker & Docker Compose
 
 This repository includes a Dockerfile and a docker-compose.yaml so you can run rBrowser in a container. The compose setup builds the image and exposes the web UI on port 5000.
 
@@ -110,12 +112,12 @@ docker compose down
 
 ## Running the Browser
 
-1. **Start the browser:**
+1. **Start the browser:** (if using install Option 1)
    ```bash
    python3 rBrowser.py
    ```
 
-2. **Open your web browser and navigate to:**
+2. **Open your web browser and navigate to:** (both for install Option 1 and 2)
    ```
    http://localhost:5000
    ```
@@ -126,6 +128,7 @@ docker compose down
    - Discovered nodes will appear in the left sidebar
    - Click on any node to browse its content and navigate pages
    - Manually paste address in the bar without waiting for announces
+   - Check bottom-left Status Bar for connection status info 
 
 ## Usage
 
@@ -180,18 +183,28 @@ docker compose down
 - ✅ **User inputs support**: Form, URL, and input boxes sending user input are supported.
 - ✅ **Fingerprint**: Send identity and lxmf address to the host node
 - ✅ **NomadNet Search Engine** : Local NomadNet Nodes page-caching Search Engine
+- ✅ **Optimized UI** : Auto-adapt UI for small screen devices like mobiles and tablets
+- ✅ **Docker Version**: Dependencies-free installation on docker
+
 
 ## Next Implementations:
 ### The following features are planned for the next versions:
 
-- Docker Version, Windows Executable version, Linux Executable Appimage, maybe.
+- Windows , Linux and MacOs Executable App, probably.
+
+
+-----
 
 
 ## Known Issues:
 
-- Sometimes Input box parameter sending is failing on some nodes with non-standard nomadnet micron link format, due to unique user fields customization  (95% of the nodes page are perfectly working!)
+- Sometimes Input box parameter sending is failing on some nodes with non-standard nomadnet micron link format, due to unique user fields customization  (BTW >95% of the nodes page are perfectly working!)
 
-If you find bugs or any other issue, feel free to contact the developer on Reticulum at: LXMF Address: 0d051f3b6f844380c3e0c5d14e37fac8
+-----
+
+## Bug or issues report:
+
+- If you find bugs or any other issue, feel free to contact the developer on Reticulum at: LXMF Address: 0d051f3b6f844380c3e0c5d14e37fac8 or open a github issue
 
 -----
 
@@ -202,6 +215,8 @@ If you find bugs or any other issue, feel free to contact the developer on Retic
 - The application runs as a single-page application with AJAX content loading
 - Fallback Micron parser is included if the original parser fails to load
 - Detailed logs are printed by the python script in the terminal
+- If Search Engine is enabled (ON by default), Nomadnet pages will be chached locally in /cache/nodes folder
+
 
 -----
 
@@ -227,7 +242,11 @@ If you find bugs or any other issue, feel free to contact the developer on Retic
 - If disconnected, verify that the python script is running
 - Verify your RNS config carefully before running the script
 - Check critical logs in terminal, logs are shown from the Reticulum instance log into the script terminal.
-- ** On Error: **: Failed to initialize: Attempt to reinitialise Reticulum, when it was already running , make sure to close other running reticulum process or instance
+
+** Common Errors:**: 
+
+- Failed to initialize: Attempt to reinitialise Reticulum when it was already running: make sure to close other running reticulum process or instances
+- Reticulum error logs in terminal: check your Reticulum settings and interfaces configuration in /youruser/.reticulum/config file. 
 
 -----
 
