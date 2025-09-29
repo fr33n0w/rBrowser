@@ -82,20 +82,70 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 
 This repository includes a Dockerfile and a docker-compose.yaml so you can run rBrowser in a container. The compose setup builds the image and exposes the web UI on port 5000.
 
-Quick start (from repo root):
+## Docker Setup Guide
+
+### Prerequisites
+
+#### 1. Install Docker and Docker Compose
+
+Check if already installed:
 ```bash
+docker --version
+docker-compose --version
+
+
+If not installed on Debian/Ubuntu:
+
+# Install Docker
+sudo apt-get update
+sudo apt-get install docker.io
+
+# Install Docker Compose (standalone)
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+```
+
+
+Quick start with Docker installed:
+```bash
+
+Configure Docker User Permissions:
+
+# add current user to docker group (if not already present):
+sudo usermod -aG docker $USER 
+Important: Log out and log back in for the group change to take effect.
+
+# clone repo:
+git clone https://github.com/fr33n0w/rBrowser
+
+# enter root repo directory:
+cd rBrowser
+
 # build and start in background
 docker compose up -d
 
 # follow logs
 docker compose logs -f rbrowser
 
+
+Useful Commands
+Rebuild image and restart:
+
 # rebuild image and restart
 docker compose build --no-cache rbrowser
 docker compose up -d
-```
 
-Open the UI at: http://localhost:5000
+# Stop the container:
+docker compose down
+
+# View running containers:
+docker ps
+
+```
+# FINALLY:
+
+## Open the UI at: http://localhost:5000
 
 Notes:
 - The Dockerfile copies a repository `config` file into the container at /home/appuser/.reticulum/config. Ensure you have a valid Reticulum config file named `config` in the repo root before building, or mount your config at runtime:
