@@ -611,3 +611,283 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 
 .fingerprint-btn:hover { background: #1ec735; }
 .fingerprint-btn:disabled { background: #6e7681; cursor: not-allowed; opacity: 0.6; }
+
+/* Touch device optimization - Complete mobile CSS */
+@media (hover: none) and (pointer: coarse) {
+    * {
+        box-sizing: border-box;
+    }
+    
+    body {
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .main {
+        display: block !important;
+        flex-direction: initial !important;
+        height: 100vh !important;
+        width: 100vw !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+    }
+    
+    /* Sidebar - force it off screen */
+    .sidebar {
+        position: fixed !important;
+        left: -320px !important;
+        top: 0 !important;
+        width: 280px !important;
+        min-width: 280px !important;
+        max-width: 280px !important;
+        height: 100vh !important;
+        z-index: 2000 !important;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .sidebar.mobile-show {
+        left: 0 !important;
+    }
+    
+    /* Content - force full width at left edge */
+    .content {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100vw !important;
+        min-width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        z-index: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        transform: none !important;
+    }
+    
+    .shortcuts-bar {
+        display: none !important;
+    }
+    
+    /* Mobile nodes button in tab bar */
+    .mobile-nodes-btn {
+        background: #238636;
+        border: 1px solid #2ea043;
+        color: white;
+        padding: 10px 12px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 12px;
+        flex-shrink: 0;
+        transition: all 0.12s ease;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+    
+    .mobile-nodes-btn:active {
+        background: #2ea043;
+    }
+    
+    /* Hide navigation controls (back/forward/reload/home) */
+    .nav-controls {
+        display: none !important;
+    }
+    
+    /* Navigation bar - simplified */
+    .nav-bar {
+        padding: 4px !important;
+        height: auto !important;
+        min-height: 48px !important;
+        max-height: none !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+        flex-shrink: 0;
+        width: 100% !important;
+        align-items: center;
+    }
+    
+    /* Address bar takes most space */
+    .address-bar {
+        flex: 1 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        min-height: 44px;
+        font-size: 16px;
+        margin: 0 !important;
+    }
+    
+    /* Action buttons */
+    .go-btn, .star-btn, .fingerprint-btn {
+        min-height: 44px;
+        min-width: 44px;
+        max-width: 44px;
+        padding: 10px;
+        flex-shrink: 0;
+    }
+    
+    /* Tab bar */
+    .tab-bar {
+        padding: 4px;
+        flex-shrink: 0;
+        width: 100% !important;
+        min-height: 52px !important;
+        max-height: 52px !important;
+        display: flex;
+        gap: 4px;
+    }
+    
+    .tabs-container {
+        flex: 1;
+        overflow-x: auto;
+    }
+    
+    .tab {
+        min-width: 90px;
+        max-width: 120px;
+        padding: 10px 8px;
+        font-size: 12px;
+    }
+    
+    .tab-close {
+        padding: 4px 8px;
+        font-size: 16px;
+    }
+    
+    .new-tab-btn, .search-tab-btn {
+        padding: 10px 8px;
+        font-size: 11px;
+    }
+    
+    /* Tab content wrapper */
+    .tab-content-wrapper {
+        flex: 1;
+        overflow: hidden;
+        width: 100% !important;
+        position: relative !important;
+    }
+    
+    .tab-content {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    /* Header */
+    .header {
+        padding: 6px !important;
+        height: auto !important;
+        min-height: 40px !important;
+        max-height: none !important;
+        flex-shrink: 0;
+        width: 100% !important;
+    }
+    
+    .page-info {
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .page-title {
+        font-size: 13px;
+    }
+    
+    .page-details {
+        font-size: 11px;
+    }
+    
+    .view-toggle {
+        position: relative;
+        top: auto;
+        right: auto;
+        transform: none;
+        margin-top: 4px;
+    }
+    
+    /* Browser area */
+    .browser-area {
+        padding: 10px;
+        flex: 1;
+        overflow-y: auto;
+        width: 100% !important;
+    }
+    
+    .page-content {
+        padding: 12px;
+        font-size: 14px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    /* Larger touch targets for sidebar elements */
+    .node-item {
+        padding: 12px;
+        margin-bottom: 4px;
+    }
+    
+    .browse-btn, .info-btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 8px;
+    }
+}
+
+/* Prevent mobile browser scrolling/bouncing */
+html, body {
+    position: fixed;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Add this to your mobile CSS section */
+@media (hover: none) and (pointer: coarse) {
+    html {
+        position: fixed !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    body {
+        position: fixed !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0;
+        padding: 0;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: none;
+    }
+    
+    /* Ensure main container doesn't trigger overscroll */
+    .main {
+        overscroll-behavior: none !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Only allow scrolling inside specific areas */
+    .browser-area {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+    
+    .sidebar {
+        overscroll-behavior: contain !important;
+    }
+    
+    .node-list-container {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+}

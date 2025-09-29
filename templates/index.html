@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>rBrowser v1.0 - Standalone NomadNet Browser</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="style.css">
@@ -1119,7 +1119,13 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
     if (viewToggle) viewToggle.style.display = 'none';
     if (addressBar) addressBar.value = originalUrl;
     
-    tab.setTitle(`Loading ${nodeName}...`);
+    // Only update tab title if this is the active tab
+    if (tab.id === activeTabId) {
+        tab.setTitle(`Loading ${nodeName}...`);
+    } else {
+        // Silently update without triggering display changes
+        tab.title = `Loading ${nodeName}...`;
+    }
     
     document.querySelectorAll('.node-item').forEach(item => item.classList.remove('selected'));
     const nodeItem = document.querySelector(`[data-hash="${hash}"]`);
@@ -1158,7 +1164,14 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                         viewToggle.textContent = 'Raw View';
                     }
                     
-                    tab.setTitle(nodeName);
+                    // Only update title if this tab is still active
+                    if (tab.id === activeTabId) {
+                        tab.setTitle(nodeName);
+                    } else {
+                        // Silently update title without triggering display update
+                        tab.title = nodeName;
+                    }
+                    
                     addClickHandlersToCurrentTab();
                     
                 } else {
@@ -1166,7 +1179,13 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     if (pageTitle) pageTitle.textContent = `Error loading ${originalUrl}`;
                     if (pageUrl) pageUrl.textContent = '';
                     if (viewToggle) viewToggle.style.display = 'none';
-                    tab.setTitle('Error');
+                    
+                    // Only update title if this tab is still active
+                    if (tab.id === activeTabId) {
+                        tab.setTitle('Error');
+                    } else {
+                        tab.title = 'Error';
+                    }
                 }
                 tab.currentRequest = null;
                 tab.setLoading(false);
@@ -1180,7 +1199,13 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 if (viewToggle) viewToggle.style.display = 'none';
                 tab.currentRequest = null;
                 tab.setLoading(false);
-                tab.setTitle('Network Error');
+                
+                // Only update title if this tab is still active
+                if (tab.id === activeTabId) {
+                    tab.setTitle('Network Error');
+                } else {
+                    tab.title = 'Network Error';
+                }
             }
         });
 }
@@ -2622,6 +2647,7 @@ async function loadCacheStats() {
 
         document.getElementById('node-list').addEventListener('click', function(e) {
 
+
             if (e.target.classList.contains('info-btn')) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -2687,7 +2713,144 @@ async function loadCacheStats() {
         updateStatus();
 
         console.log('Browser initialization complete');
+
+    // Mobile nodes button in tab bar
+        if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+            const nodesBtn = document.createElement('button');
+            nodesBtn.className = 'mobile-nodes-btn';
+            nodesBtn.innerHTML = '📋 Nodes';
+            
+            // Add before "New Tab" button
+            const tabBar = document.querySelector('.tab-bar');
+            const newTabBtn = document.querySelector('.new-tab-btn');
+            if (tabBar && newTabBtn) {
+                tabBar.insertBefore(nodesBtn, newTabBtn);
+            }
+            
+            const sidebar = document.querySelector('.sidebar');
+            
+            nodesBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sidebar.classList.toggle('mobile-show');
+                nodesBtn.innerHTML = sidebar.classList.contains('mobile-show') ? '✕ Close' : '📋 Nodes';
+            });
+            
+            // Close when clicking outside sidebar
+            document.addEventListener('click', (e) => {
+                if (sidebar.classList.contains('mobile-show') && 
+                    !sidebar.contains(e.target) && 
+                    !nodesBtn.contains(e.target)) {
+                    sidebar.classList.remove('mobile-show');
+                    nodesBtn.innerHTML = '📋 Nodes';
+                }
+            });
+            
+            // Close when node clicked
+            document.getElementById('node-list').addEventListener('click', (e) => {
+                if (e.target.closest('.node-item')) {
+                    setTimeout(() => {
+                        sidebar.classList.remove('mobile-show');
+                        nodesBtn.innerHTML = '📋 Nodes';
+                    }, 200);
+                }
+            });
+        }
+        
+    // Orientation alert for mobile devices - auto-hide after 5 seconds
+        if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+            let alertTimeout = null;
+            
+            function checkOrientation() {
+                const isPortrait = window.innerHeight > window.innerWidth;
+                
+                if (isPortrait) {
+                    // Create alert if it doesn't exist
+                    if (!document.getElementById('orientation-alert')) {
+                        const alert = document.createElement('div');
+                        alert.id = 'orientation-alert';
+                        alert.style.cssText = `
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            right: 0;
+                            background: #fb8500;
+                            color: white;
+                            padding: 12px;
+                            text-align: center;
+                            z-index: 3000;
+                            font-size: 14px;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                            transition: opacity 0.3s ease;
+                        `;
+                        alert.innerHTML = '📱 For better experience, please rotate your device to landscape mode';
+                        document.body.appendChild(alert);
+                        
+                        // Auto-hide after 5 seconds
+                        alertTimeout = setTimeout(() => {
+                            alert.style.opacity = '0';
+                            setTimeout(() => {
+                                if (alert.parentNode) {
+                                    alert.remove();
+                                }
+                            }, 300); // Wait for fade animation
+                        }, 5000);
+                    }
+                } else {
+                    // Remove alert in landscape
+                    if (alertTimeout) {
+                        clearTimeout(alertTimeout);
+                        alertTimeout = null;
+                    }
+                    const alert = document.getElementById('orientation-alert');
+                    if (alert) {
+                        alert.remove();
+                    }
+                }
+            }
+            
+            // Check on load
+            checkOrientation();
+            
+            // Check on orientation change
+            window.addEventListener('orientationchange', () => {
+                setTimeout(checkOrientation, 100);
+            });
+            
+            // Check on resize
+            window.addEventListener('resize', checkOrientation);
+        }
+
+
     });
+
+// mobile devices support
+let touchStartX = 0;
+let touchEndX = 0;
+
+document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+});
+
+document.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+});
+
+function handleSwipe() {
+    const swipeThreshold = 50;
+    const diff = touchStartX - touchEndX;
+    
+    if (Math.abs(diff) > swipeThreshold) {
+        if (diff > 0) {
+            // Swipe left - next tab
+            switchToNextTab();
+        } else {
+            // Swipe right - previous tab
+            switchToPreviousTab();
+        }
+    }
+}
+
     </script>
 </body>
 </html>
