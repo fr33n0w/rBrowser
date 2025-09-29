@@ -43,12 +43,11 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 - **Operating System**: Linux, macOS, or Windows
 - **Network**: Access to a Reticulum network (radio interfaces, internet gateways, or local testnet)
 
-### Python Dependencies
+### Python Dependencies (included in requirements.txt)
 
 - `reticulum` >= rns 1.0.0 - Reticulum networking protocol stack for connection and NomadNetwork retrival
 - `flask` >= 2.0.0 - Base Web framework for the browser UI interface
-- `waitress` - Web Server Framework for windows os
-- `gunicorn` - Web Server Framework for Linux
+- `waitress` >=2.1.2 - Web Server Framework
 
 
 -----
@@ -229,7 +228,7 @@ docker compose down
 - ✅ **Bookmark System**: Save frequently visited nodes and pages (Favorites Nodes Bar)
 - ✅ **MultiTab Navigation**: Open multiple links in new browser tabs
 - ✅ **Navigation Shortcuts**: Keyboards shortcuts for tab navigation / new / close / reload page
-- ✅ **Web UI**: Implemented waitress and gunicorn production ready web servers, fallback to flask if missing.
+- ✅ **Web UI**: Implemented waitress production ready web servers, fallback to flask if missing.
 - ✅ **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
 - ✅ **User inputs support**: Form, URL, and input boxes sending user input are supported.
 - ✅ **Fingerprint**: Send identity and lxmf address to the host node
