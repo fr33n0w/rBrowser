@@ -130,7 +130,6 @@ docker compose logs -f rbrowser
 
 
 Useful Commands
-Rebuild image and restart:
 
 # rebuild image and restart
 docker compose build --no-cache rbrowser
@@ -143,9 +142,6 @@ docker compose down
 docker ps
 
 ```
-# FINALLY:
-
-## Open the UI at: http://localhost:5000
 
 Notes:
 - The Dockerfile copies a repository `config` file into the container at /home/appuser/.reticulum/config. Ensure you have a valid Reticulum config file named `config` in the repo root before building, or mount your config at runtime:
@@ -157,6 +153,11 @@ Notes:
 ```bash
 docker compose down
 ```
+
+# AND FINALLY:
+
+## Open the rBrowser UI at: http://localhost:5000
+
 
 -----
 
