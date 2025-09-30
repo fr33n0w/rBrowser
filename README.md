@@ -12,8 +12,8 @@
 [![Python](https://img.shields.io/badge/python-3.7%2B-green.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
 [![Reticulum](https://img.shields.io/badge/Reticulum-supported-yellow.svg)](https://github.com/markqvist/Reticulum)
-[![Dev: Frank](https://img.shields.io/badge/Reticulum-supported-yellow.svg)](https://github.com/fr33n0w)
-[![Dev: Thomas](https://img.shields.io/badge/Reticulum-supported-yellow.svg)](https://github.com/neoemit)
+[![Dev: Frank](https://img.shields.io/badge/Dev:-Frank-red.svg)](https://github.com/fr33n0w)
+[![Dev: Thomas](https://img.shields.io/badge/Dev:-Thomas-red.svg)](https://github.com/neoemit)
 ---
 
 # rBrowser: Standalone NomadNet Browser
