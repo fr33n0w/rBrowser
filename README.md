@@ -1,6 +1,5 @@
-# rBrowser v1.0: 
-## Standalone NomadNet Browser
----
+# rBrowser: Standalone NomadNet Browser
+
 
 <img width="1920" height="1080" alt="lastv1" src="https://github.com/user-attachments/assets/3f753eed-49c5-4d89-820b-e1dc1a8cb383" />
 
@@ -15,7 +14,7 @@
 [![Developer: Thomas](https://img.shields.io/badge/Developer:-Thomas-blue.svg)](https://github.com/neoemit)
 ---
 
-# rBrowser:
+# rBrowser v1.0:
 
 A cross-platform, standalone, web-based UI Browser for exploring NomadNetwork Nodes over Reticulum Network. 
 
