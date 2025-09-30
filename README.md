@@ -6,7 +6,15 @@
 <img width="1920" height="1080" alt="lastv1" src="https://github.com/user-attachments/assets/3f753eed-49c5-4d89-820b-e1dc1a8cb383" />
 
 
------
+---
+
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.7%2B-green.svg)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
+[![Reticulum](https://img.shields.io/badge/Reticulum-supported-yellow.svg)](https://github.com/markqvist/Reticulum)
+[![Dev: Frank](https://img.shields.io/badge/Reticulum-supported-yellow.svg)](https://github.com/fr33n0w)
+[![Dev: Thomas](https://img.shields.io/badge/Reticulum-supported-yellow.svg)](https://github.com/neoemit)
+---
 
 # rBrowser: Standalone NomadNet Browser
 
