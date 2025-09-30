@@ -1,10 +1,4 @@
-# rBrowser v1.0: Standalone NomadNet Browser
-
------
-
-
 <img width="1920" height="1080" alt="lastv1" src="https://github.com/user-attachments/assets/3f753eed-49c5-4d89-820b-e1dc1a8cb383" />
-
 
 ---
 
@@ -17,7 +11,9 @@
 [![Developer: Thomas](https://img.shields.io/badge/Developer:-Thomas-blue.svg)](https://github.com/neoemit)
 ---
 
-A cross-platform standalone web-based UI browser for exploring NomadNetwork Nodes and Pages over Reticulum Network. 
+# rBrowser v1.0: Standalone NomadNet Browser
+
+A cross-platform, standalone, web-based UI Browser for exploring NomadNetwork Nodes and Pages over Reticulum Network. 
 
 This browser automatically discovers NomadNet nodes through network announces and provides a user-friendly interface for browsing distributed content with Micron markup support.
 
