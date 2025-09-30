@@ -20,11 +20,11 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 
 ## Some Features:
 
-- **Real-time Node Discovery**: Automatically detects and lists NomadNetwork nodes as they announce on the network
+- **Real-time Node Discovery**: Detects and lists NomadNetwork nodes as they announce on the network
 - **Web-based Interface**: Modern, responsive browser interface accessible at `localhost:5000`
 - **Micron Parser**: Renders NomadNet's Micron markup language with proper formatting and styling
 - **URL Navigation**: Address bar with back/forward navigation and manual URL input
-- **Dual View Modes**: Toggle between rendered Micron content and raw text view (top-right Rendered / Raw button)
+- **Dual View Modes**: Toggle between Rendered Micron content and Raw page view
 - **Link Navigation**: Click on links within Micron content to navigate between pages
 - **Connection Status**: Real-time display of network status and discovered pages / announced nodes
 - **File download support**: Download files hosted on nomadnet nodes
@@ -54,7 +54,16 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 
 ## Installation
 
-## Option 1: Run from terminal
+### PREREQUISITES:
+
+**Configure Reticulum:**
+   
+- Before launching the script or the Docker image, you need a full configured and working instance of Reticulum, 
+- At least one TCPClientInterface in your ./reticulum/config file to access NomadNetwork 
+- You don't need to run RNS manually, just make sure your instance is working and can connect to Reticulum Network!
+
+
+## Install Option 1: Run from terminal
 
 1. **Clone the repository:**
 
@@ -69,17 +78,31 @@ It includes some exclusive features like: Automatic listening for announce, Add 
    pip install -r requirements.txt
    ```
 
-3. **Configure Reticulum:**
-   
-   Before launching the script you need a full working instance of Reticulum, so you need to configure at least one TCPClientInterface in your ./reticulum/config file. 
+3. **Start rBbrowser:**
+   ```bash
+   python3 rBrowser.py
+   ```
 
-   You don't need to run rns manually, just make sure your instance is working and can connect to Reticulum Network!
+4. **Open your web browser and navigate to:**
+   ```
+   http://localhost:5000
+   ```
+
+5. **Wait for node discovery:**
+
+   - The browser will start listening for NomadNetwork announces
+   - Discovered nodes will appear in the left sidebar
+   - Click on any node to browse its content and navigate pages
+   - or manually paste address in the bar without waiting for announces
+   - Check bottom-left Status Bar for connection status info 
+
 
 ---
 
-## Option 2: Docker & Docker Compose
+## Install Option 2: Docker & Docker Compose
 
-This repository includes a Dockerfile and a docker-compose.yaml so you can run rBrowser in a container. The compose setup builds the image and exposes the web UI on port 5000.
+- This repository includes a Dockerfile and a docker-compose.yaml so you can run rBrowser in a container. 
+- The compose setup builds the image and exposes the web UI on port 5000.
 
 ## Docker Setup Guide
 
@@ -128,7 +151,7 @@ docker compose up -d
 docker compose logs -f rbrowser
 
 
-Useful Commands
+Useful Commands:
 
 # rebuild image and restart
 docker compose build --no-cache rbrowser
@@ -153,32 +176,11 @@ Notes:
 docker compose down
 ```
 
-# AND FINALLY:
-
-## Open the rBrowser UI at: http://localhost:5000
+## At the end, open the rBrowser UI at: http://localhost:5000
 
 
 -----
 
-## Running the Browser
-
-1. **Start the browser:** (if using install Option 1)
-   ```bash
-   python3 rBrowser.py
-   ```
-
-2. **Open your web browser and navigate to:** (both for install Option 1 and 2)
-   ```
-   http://localhost:5000
-   ```
-
-3. **Wait for node discovery:**
-
-   - The browser will start listening for NomadNetwork announces
-   - Discovered nodes will appear in the left sidebar
-   - Click on any node to browse its content and navigate pages
-   - Manually paste address in the bar without waiting for announces
-   - Check bottom-left Status Bar for connection status info 
 
 ## Usage
 
@@ -248,7 +250,7 @@ docker compose down
 
 ## Known Issues:
 
-- Sometimes Input box parameter sending is failing on some nodes with non-standard nomadnet micron link format, due to unique user fields customization  (BTW >95% of the nodes page are perfectly working!)
+- Sometimes Input box parameter sending is failing on nodes with non-standard nomadnet micron link format, due to unique fields customization  (BTW >95% of pages are perfectly working!)
 
 -----
 
@@ -300,11 +302,11 @@ docker compose down
 
 -----
 
-## Warning:
+## Traffic Usage Warning:
 
 The included Search Engine generates network traffic when enabled, by requesting remote pages. It requests by default only the index.mu page but you can try to fetch more pages with "Cache additional pages" in the Search Engine settings. 
 
-**IF YOU ARE USING LORA INTERFACE, DISABLE THE SEARCH ENGINE** (TO AVOID CONSUMING ALL THE AIRTIME AND GENERATING UNWANTED NETWORK TRAFFIC.)
+**IF YOU ARE USING LORA INTERFACE, DISABLE THE SEARCH ENGINE** (TO AVOID CONSUMING ALL YOUR AIRTIME AND GENERATING UNWANTED NETWORK TRAFFIC!)
 
 -----
 ## License
@@ -327,6 +329,7 @@ This project includes local available versions of:
 
 - micronparser.js for NomadNet pages rendering 
 - DOMPurify.min.js for html security
+- fingerptint, go and star icons from flaticon.com
 
 The Web UI is served by:
 
