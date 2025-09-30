@@ -35,6 +35,5 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 5000
 
-# Use the flask CLI to run the app (expects Flask app object `app` in rBrowser.py)
-ENV FLASK_APP=rBrowser:app
-CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000"]
+# Use waitress to serve the app (expects Flask app object `app` in rBrowser.py)
+CMD ["waitress-serve", "--host=0.0.0.0", "--port=5000", "rBrowser:app"]
