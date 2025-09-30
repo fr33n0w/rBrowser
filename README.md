@@ -60,7 +60,8 @@ It includes some exclusive features like: Automatic listening for announce, Add 
    
 - Before launching the script or the Docker image, you need a full configured and working instance of Reticulum, 
 - At least one TCPClientInterface in your ./reticulum/config file to access NomadNetwork 
-- You don't need to run RNS manually, just make sure your instance is working and can connect to Reticulum Network!
+
+NOTE: You don't need to run RNS manually, just make sure your instance is working and can connect to Reticulum Network!
 
 
 ## Install Option 1: Run from terminal
@@ -295,7 +296,7 @@ docker compose down
 - Verify your RNS config carefully before running the script
 - Check critical logs in terminal, logs are shown from the Reticulum instance log into the script terminal.
 
-** Common Errors:**: 
+**Common Errors:**
 
 - Failed to initialize: Attempt to reinitialise Reticulum when it was already running: make sure to close other running reticulum process or instances
 - Reticulum error logs in terminal: check your Reticulum settings and interfaces configuration in /youruser/.reticulum/config file. 
