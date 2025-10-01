@@ -1,5 +1,6 @@
 # rBrowser: Standalone NomadNet Browser
 
+A modern, web-based UI for exploring **NomadNet** nodes and pages over the **Reticulum** network.
 
 <img width="1920" height="1080" alt="lastv1" src="https://github.com/user-attachments/assets/3f753eed-49c5-4d89-820b-e1dc1a8cb383" />
 
@@ -14,42 +15,77 @@
 [![Developer: Thomas](https://img.shields.io/badge/Developer:-Thomas-blue.svg)](https://github.com/neoemit)
 ---
 
+# 🧭 Overview
+
 # rBrowser v1.0:
 
-A cross-platform, standalone, web-based UI Browser for exploring NomadNetwork Nodes over Reticulum Network. 
+**rBrowser** is cross-platform, standalone, web-based UI Browser for exploring NomadNetwork Nodes over Reticulum Network. 
 
-This browser automatically discovers NomadNet nodes through network announces and provides a user-friendly interface for browsing distributed content with Micron markup support.
+Automatically discovers NomadNet nodes through network announces and provides a user-friendly interface for browsing distributed content with Micron markup support.
 
-It includes some exclusive features like: Automatic listening for announce, Add nodes to favorites, browse and render any kind of NomadNet links, download files from remote nodes, unique local NomadNet Search Engine and more...
+It includes some exclusive features like: Automatic listening for announce, Add nodes to favorites, browse and render any kind of NomadNet links, download files from remote nodes, unique local **NomadNet Search Engine** and more...
+
+**rBrowser** offers a familiar browser-like interface expereience (with address bar, navigation buttons, favorites, and more) while connecting to the decentralized Reticulum network.
+
+Web-Based UI: the rBrowser interface is spawned via local web server to your localhost on port 5000.
 
 -----
 
-## Some Features:
+## 📑 Table of Contents
 
-- **Real-time Node Discovery**: Detects and lists NomadNetwork nodes as they announce on the network
-- **Web-based Interface**: Modern, responsive browser interface accessible at `localhost:5000`
-- **Micron Parser**: Renders NomadNet's Micron markup language with proper formatting and styling
-- **URL Navigation**: Address bar with back/forward navigation and manual URL input
-- **Dual View Modes**: Toggle between Rendered Micron content and Raw page view
-- **Link Navigation**: Click on links within Micron content to navigate between pages
-- **Connection Status**: Real-time display of network status and discovered pages / announced nodes
-- **File download support**: Download files hosted on nomadnet nodes
-- **NomadNet Search Endinge**: Unique search engine system to search in local auto-cached pages if enabled
-- **Add To Favorites**: Favorite system with star button synched across the whole UI tabs
-- **Node Info**: Extended node info for remote node hosting page in the node list
-- **Fingerprint**: Allow to identify with identity and LXMF address to remote host with a button
-- **Notifications & Logs**: Comprehensive Notifications info box in the web ui + full operational log in the terminal 
-- **And more......**: Download rBrowser and try it now!!
+* [• 🧭 Overview](#-overview)
+  * [✨ Features](#-features)
+* [• 📋 Requirements](#-requirements)
+  * [🧰 System Requirements](#-system-requirements)
+  * [🐍 Python Dependencies](#-python-dependencies-included-in-requirementstxt)
+* [• ⚙️ Installation](#️-installation)
+  * [⚡ Prerequisites](#-prerequisites)
+  * [💻 Install Option 1: Run from Terminal](#-install-option-1-run-from-terminal)
+  * [🐳 Install Option 2: Docker & Docker Compose](#-install-option-2-docker--docker-compose)
+* [• 🚀 Usage](#-usage)
+  * [🔗 URL Formats Supported](#-url-formats-supported)
+  * [🧭 Navigation](#-navigation)
+  * [👁️ Pages View Mode](#️-pages-view-mode)
+* [• ✅ Currently Implemented](#-currently-implemented)
+* [• 🧩 Next Implementations](#-next-implementations)
+* [• ⚠️ Known Issues](#️-known-issues)
+* [• 🐛 Bug or Issues Report](#-bug-or-issues-report)
+* [• 💡 Development Notes](#-development-notes)
+* [• 🛠 Troubleshooting](#-troubleshooting)
+* [• ⚠️ Traffic Usage Warning](#️-traffic-usage-warning)
+* [• 📜 License](#-license)
+* [• 🤝 Contributing](#-contributing)
+* [• 📦 External Dependencies](#-external-dependencies)
+* [• 🖼 Screenshots](#-screenshots)
 
-## Requirements
+-----
 
-### System Requirements
+## ✨ Features:
+
+- 📡 **Real-time Node Discovery**: Detects and lists NomadNetwork nodes as they announce on the network
+- 🌐 **Web-based Interface**: Modern, responsive browser interface accessible at `localhost:5000`
+- 📝 **Micron Parser**: Renders NomadNet's Micron markup language with proper formatting and styling
+- 🧭 **URL Navigation**: Address bar with back/forward navigation and manual URL input
+- 👁️ **Dual View Modes**: Toggle between Rendered Micron content and Raw page view
+- 🔗 **Link Navigation**: Click on links within Micron content to navigate between pages
+- 📊 **Connection Status**: Real-time display of network status and discovered pages / announced nodes
+- 📥 **File Download Support**: Download files hosted on nomadnet nodes
+- 🔍 **NomadNet Search Engine**: Unique search engine system to search in local auto-cached pages if enabled
+- ⭐ **Add To Favorites**: Favorite system with star button synched across the whole UI tabs
+- ℹ️ **Node Info**: Extended node info for remote node hosting page in the node list
+- 🔐 **Fingerprint**: Allow to identify with identity and LXMF address to remote host with a button
+- 🔔 **Notifications & Logs**: Comprehensive Notifications info box in the web ui + full operational log in the terminal 
+- 🎉 **And more......**: Download rBrowser and try it now!!
+
+## 📋 Requirements
+
+### 🧰 System Requirements
 
 - **Python**: 3.7 or higher
 - **Operating System**: Linux, macOS, or Windows
 - **Network**: Access to a Reticulum network (radio interfaces, internet gateways, or local testnet)
 
-### Python Dependencies (included in requirements.txt)
+### 🐍 Python Dependencies (included in requirements.txt)
 
 - `reticulum` >= rns 1.0.0 - Reticulum networking protocol stack for connection and NomadNetwork retrival
 - `flask` >= 2.0.0 - Base Web framework for the browser UI interface
@@ -58,9 +94,9 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 
 -----
 
-## Installation
+## ⚙️ Installation
 
-### PREREQUISITES:
+### ⚡ PREREQUISITES:
 
 **Configure Reticulum:**
    
@@ -70,7 +106,7 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 NOTE: You don't need to run RNS manually, just make sure your instance is working and can connect to Reticulum Network!
 
 
-## Install Option 1: Run from terminal
+## 💻 Install Option 1: Run from terminal
 
 1. **Clone the repository:**
 
@@ -106,7 +142,7 @@ NOTE: You don't need to run RNS manually, just make sure your instance is workin
 
 ---
 
-## Install Option 2: Docker & Docker Compose
+## 🐳 Install Option 2: Docker & Docker Compose
 
 - This repository includes a Dockerfile and a docker-compose.yaml so you can run rBrowser in a container. 
 - The compose setup builds the image and exposes the web UI on port 5000.
@@ -189,85 +225,92 @@ docker compose down
 -----
 
 
-## Usage
+## 🚀 Usage
 
-### URL Formats Supported
+### 🔗 URL Formats Supported
 
 - `hash:/page/index.mu` - Direct hash with page path
 - `nomadnetwork://hash/page/index.mu` - Full protocol URL
 - `hash` - Hash only (defaults to `/page/index.mu`)
 - `:page/index.mu`field`content` - Pages with input field in URL
 
-### Navigation
+### 🧭 Navigation
 
-- **Address Bar**: Enter NomadNet URLs manually
-- **Back/Forward**: Navigate through browsing history
-- **Refresh**: Reload the current page
-- **Node Sidebar**: Click any discovered node to browse
-- **Link Clicking**: Click links within Micron content to navigate
-- **Add Favorites**: Save your favorite nodes and recall them later
-- **Search Page or Content**: Use the included NomadNet Search Engine to discover content
-- **Identify to remote nodes**: Send fingerprint to identify to remote nodes (send identity and LXMF address)
+- 📍 **Address Bar**: Enter NomadNet URLs manually
+- ⬅️➡️ **Back/Forward**: Navigate through browsing history
+- 🔄 **Refresh**: Reload the current page
+- 📋 **Node Sidebar**: Click any discovered node to browse
+- 🖱️ **Link Clicking**: Click links within Micron content to navigate
+- ⭐ **Add Favorites**: Save your favorite nodes and recall them later
+- 🔍 **Search Page or Content**: Use the included NomadNet Search Engine to discover content
+- 🔐 **Identify to remote nodes**: Send fingerprint to identify to remote nodes (send identity and LXMF address)
 
-### Pages View Mode:
+### 👁️ Pages View Mode:
 
 - **Rendered View**: Displays Micron markup with proper formatting
 - **Raw View**: Shows the original Micron source code
 
+## ✅ Currently Implemented
 
-## Currently Implemented
-
-- ✅ **Reticulum Network Integration**: Full connection to Reticulum mesh network
-- ✅ **NomadNet Node Discovery**: Real-time announce monitoring and node listing
-- ✅ **Page Fetching**: Request and receive pages from remote nodes
-- ✅ **Micron Rendering**: Parse and display Micron markup language
-- ✅ **Web Interface**: Complete browser-style interface with navigation
-- ✅ **URL Navigation**: Address bar with manual URL input support
-- ✅ **Navigation History**: Back/forward button functionality
-- ✅ **Link Detection**: Automatic detection of NomadNet URLs in content
-- ✅ **Click Navigation**: Navigate by clicking links in rendered content 
-- ✅ **Notification System**: Modern info box notifications when info are needed
-- ✅ **Multiple URL Formats**: Enhanced parsing for various NomadNet URL conventions
-- ✅ **Page Title Extraction**: Parse and display proper page titles in all UI info text
-- ✅ **Navigation Breadcrumbs**: Show current node name and url location path
-- ✅ **Link Preview**: Hover tooltips showing destination URLs
-- ✅ **Dual View Modes**: Toggle between rendered and raw text views
-- ✅ **Error Handling**: Robust error handling for network issues and timeouts
-- ✅ **Complete Local Usage**: incorporated scripts, css and js without external call to any CDN's
-- ✅ **Bookmark System**: Save frequently visited nodes and pages (Favorites Nodes Bar)
-- ✅ **MultiTab Navigation**: Open multiple links in new browser tabs
-- ✅ **Navigation Shortcuts**: Keyboards shortcuts for tab navigation / new / close / reload page
-- ✅ **Web UI**: Implemented waitress production ready web servers, fallback to flask if missing.
-- ✅ **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
-- ✅ **User inputs support**: Form, URL, and input boxes sending user input are supported.
-- ✅ **Fingerprint**: Send identity and lxmf address to the host node
-- ✅ **NomadNet Search Engine** : Local NomadNet Nodes page-caching Search Engine
-- ✅ **Optimized UI** : Auto-adapt UI for small screen devices like mobiles and tablets
-- ✅ **Docker Version**: Dependencies-free installation on docker
+- 🌐 **Reticulum Network Integration**: Full connection to Reticulum mesh network
+- 📡 **NomadNet Node Discovery**: Real-time announce monitoring and node listing
+- 📄 **Page Fetching**: Request and receive pages from remote nodes
+- 📝 **Micron Rendering**: Parse and display Micron markup language
+- 🖥️ **Web Interface**: Complete browser-style interface with navigation
+- 🧭 **URL Navigation**: Address bar with manual URL input support
+- ⬅️➡️ **Navigation History**: Back/forward button functionality
+- 🔗 **Link Detection**: Automatic detection of NomadNet URLs in content
+- 🖱️ **Click Navigation**: Navigate by clicking links in rendered content 
+- 🔔 **Notification System**: Modern info box notifications when info are needed
+- 🔀 **Multiple URL Formats**: Enhanced parsing for various NomadNet URL conventions
+- 🏷️ **Page Title Extraction**: Parse and display proper page titles in all UI info text
+- 🗺️ **Navigation Breadcrumbs**: Show current node name and url location path
+- 👁️ **Link Preview**: Hover tooltips showing destination URLs
+- 🔄 **Dual View Modes**: Toggle between rendered and raw text views
+- ⚠️ **Error Handling**: Robust error handling for network issues and timeouts
+- 💾 **Complete Local Usage**: incorporated scripts, css and js without external call to any CDN's
+- ⭐ **Bookmark System**: Save frequently visited nodes and pages (Favorites Nodes Bar)
+- 📑 **MultiTab Navigation**: Open multiple links in new browser tabs
+- ⌨️ **Navigation Shortcuts**: Keyboards shortcuts for tab navigation / new / close / reload page
+- 🌐 **Web UI**: Implemented waitress production ready web servers, fallback to flask if missing.
+- 📥 **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
+- 📝 **User inputs support**: Form, URL, and input boxes sending user input are supported.
+- 🔐 **Fingerprint**: Send identity and lxmf address to the host node
+- 🔍 **NomadNet Search Engine**: Local NomadNet Nodes page-caching Search Engine
+- 📱 **Optimized UI**: Auto-adapt UI for small screen devices like mobiles and tablets
+- 🐳 **Docker Version**: Dependencies-free installation on docker
 
 
-## Next Implementations:
+## 🧩 Next Implementations:
 ### The following features are planned for the next versions:
 
-- Windows , Linux and MacOs Executable App, probably.
+* Prebuilt executables for Windows/Linux/macOS
+* Enhanced error handling and metrics
+* Improved mobile UI
+
+-----
+
+
+## ⚠️ Known Issues:
+
+- Input box parameter sending could fail on nodes with non-standard nomadnet micron link format, due to unique fields customization  (BTW >95% of pages are perfectly working!)
+
+-----
+
+## 🐛 Bug or issues report:
+
+- If you find bugs or any other issue, feel free to contact the developer on Reticulum at:
+
+```
+- LXMF Address: 0d051f3b6f844380c3e0c5d14e37fac8
+```
+
+or directly open a github issue here!
 
 
 -----
 
-
-## Known Issues:
-
-- Sometimes Input box parameter sending is failing on nodes with non-standard nomadnet micron link format, due to unique fields customization  (BTW >95% of pages are perfectly working!)
-
------
-
-## Bug or issues report:
-
-- If you find bugs or any other issue, feel free to contact the developer on Reticulum at: LXMF Address: 0d051f3b6f844380c3e0c5d14e37fac8 or open a github issue
-
------
-
-## Development Notes
+## 💡 Development Notes
 
 - The browser creates an identity file (`nomadnet_browser_identity`) on first run
 - Reticulum configuration is stored in the default location (`~/.reticulum/`)
@@ -279,7 +322,7 @@ docker compose down
 
 -----
 
-## Troubleshooting
+## 🛠 Troubleshooting
 
 **No nodes appearing:**
 - Verify Reticulum network connectivity and configuration!
@@ -309,14 +352,14 @@ docker compose down
 
 -----
 
-## Traffic Usage Warning:
+## ⚠️ Traffic Usage Warning:
 
 The included Search Engine generates network traffic when enabled, by requesting remote pages. It requests by default only the index.mu page but you can try to fetch more pages with "Cache additional pages" in the Search Engine settings. 
 
 **IF YOU ARE USING LORA INTERFACE, DISABLE THE SEARCH ENGINE** (TO AVOID CONSUMING ALL YOUR AIRTIME AND GENERATING UNWANTED NETWORK TRAFFIC!)
 
 -----
-## License
+## 📜 License
 
 This project is open source. Use it and share freely. Please mention the official project link.
 
@@ -324,13 +367,13 @@ Please refer to the LICENSE file for details.
 
 -----
 
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and feature requests.
 
 -----
 
-## External dependencies:
+## 📦 External dependencies:
 
 This project includes local available versions of:
 
@@ -348,9 +391,7 @@ External software and all their rights are owned by the respective developers.
 
 -----
 
-# rBrowser v1.0
-
-##Screenshots:
+## 🖼 Screenshots:
 
 ### Example of link navigation with input field requests:
 <img width="1920" height="1080" alt="lastv1_2" src="https://github.com/user-attachments/assets/9c5c4335-2ad9-4367-9c2f-2fcd5cc6693d" />
@@ -364,4 +405,8 @@ External software and all their rights are owned by the respective developers.
 
 -----
 
+<div align="center">
+
 # ❤️ Developed with love by Franky & Thomas ❤️
+
+</div>
