@@ -132,6 +132,91 @@ class NomadNetBrowser:
         self.result["received"] = True
         self.response_event.set()
 
+    def ping_node(self, node_hash):
+        """Ping a NomadNet node to check reachability"""
+        try:
+            print(f"Pinging node {node_hash[:16]}...")
+            browser = NomadNetBrowser(self, node_hash)
+            response = browser.send_ping()
+            return response
+        except Exception as e:
+            print(f"Ping failed: {str(e)}")
+            return {"error": f"Ping failed: {str(e)}", "message": "", "status": "error"}
+            
+    def send_ping(self, timeout=15):
+        """Send a ping to test node reachability"""
+        try:
+            print(f"Pinging {RNS.prettyhexrep(self.destination_hash)[:16]}...")
+            
+            if not RNS.Transport.has_path(self.destination_hash):
+                print(f"📡 Requesting path for ping...")
+                RNS.Transport.request_path(self.destination_hash)
+                start_time = time.time()
+                while not RNS.Transport.has_path(self.destination_hash):
+                    if time.time() - start_time > 30:
+                        return {"error": "No path", "message": "No path to destination", "status": "error"}
+                    time.sleep(0.1)
+            
+            print(f"✅ Path found, measuring round-trip time...")
+            ping_start = time.time()
+            
+            identity = RNS.Identity.recall(self.destination_hash)
+            if not identity:
+                return {"error": "No identity", "message": "Could not recall identity", "status": "error"}
+            
+            self.destination = RNS.Destination(identity, RNS.Destination.OUT, RNS.Destination.SINGLE, "nomadnetwork", "node")
+            self.link = RNS.Link(self.destination)
+            self.result = {"data": None, "received": False, "rtt": None}
+            self.response_event = threading.Event()
+            self.ping_start_time = ping_start
+            
+            self.link.set_link_established_callback(self._on_ping_link_established)
+            success = self.response_event.wait(timeout=timeout)
+            
+            if success and self.result["received"]:
+                rtt = self.result.get("rtt", 0)
+                return {
+                    "message": f"Pong received! Round-trip time: {rtt:.2f}s",
+                    "rtt": rtt,
+                    "status": "success",
+                    "error": None
+                }
+            else:
+                return {"error": "Timeout", "message": "Ping timeout", "status": "error"}
+                
+        except Exception as e:
+            print(f"❌ Exception during ping: {str(e)}")
+            return {"error": str(e), "message": f"Exception: {str(e)}", "status": "error"}
+
+    def _on_ping_link_established(self, link):
+        try:
+            print(f"🔗 Ping link established, sending ping request...")
+            # Simple ping - just request the index page but measure RTT
+            link.request("/page/index.mu", data=None, 
+                        response_callback=self._on_ping_response, 
+                        failed_callback=self._on_ping_failed)
+        except Exception as e:
+            print(f"❌ Ping request error: {str(e)}")
+            self.result["received"] = True
+            self.response_event.set()
+
+    def _on_ping_response(self, receipt):
+        try:
+            rtt = time.time() - self.ping_start_time
+            self.result["rtt"] = rtt
+            self.result["received"] = True
+            print(f"✅ Pong! RTT: {rtt:.2f}s")
+            self.response_event.set()
+        except Exception as e:
+            print(f"❌ Ping response error: {str(e)}")
+            self.result["received"] = True
+            self.response_event.set()
+
+    def _on_ping_failed(self, receipt):
+        print("❌ Ping failed")
+        self.result["received"] = True
+        self.response_event.set()
+
     def send_fingerprint(self, timeout=30):
         """Send fingerprint using RNS link.identify() like MeshChat does"""
         try:
@@ -1173,6 +1258,17 @@ class NomadNetWebBrowser:
         except Exception as e:
             print(f"Identity fingerprint send failed: {str(e)}")
             return {"error": f"Identity fingerprint send failed: {str(e)}", "message": "", "status": "error"}
+        
+    def ping_node(self, node_hash):
+        """Ping a NomadNet node to check reachability"""
+        try:
+            print(f"Pinging node {node_hash[:16]}...")
+            browser = NomadNetBrowser(self, node_hash)
+            response = browser.send_ping()
+            return response
+        except Exception as e:
+            print(f"Ping failed: {str(e)}")
+            return {"error": f"Ping failed: {str(e)}", "message": "", "status": "error"}
 
 # Initialize the browser
 browser = NomadNetWebBrowser()
@@ -1515,6 +1611,16 @@ def serve_star_icon():
         print(f"❌ Error serving star icon: {e}")
         return "", 404
 
+@app.route('/templates/ping.png')
+def serve_ping_icon():
+    """Serve the ping icon"""
+    try:
+        template_path = get_resource_path('templates') if 'get_resource_path' in globals() else 'templates'
+        return send_from_directory(template_path, 'ping.png', mimetype='image/png')
+    except Exception as e:
+        print(f"❌ Error serving ping icon: {e}")
+        return "", 404
+
 @app.route('/templates/fingerprint.png')
 def serve_fingerprint_icon():
     """Serve the fingerprint icon"""
@@ -1633,6 +1739,20 @@ def api_cache_stats():
         'cache_size': f"{total_size / 1024:.1f} KB"
     })
 
+@app.route('/api/ping/<node_hash>', methods=['POST'])
+def api_ping_node(node_hash):
+    """Ping a NomadNet node"""
+    print(f"API Request: Pinging node {node_hash[:16]}...")
+    
+    response = browser.ping_node(node_hash)
+    
+    if response["status"] == "success":
+        print(f"API Response: Ping successful - RTT: {response.get('rtt', 0):.2f}s")
+    else:
+        print(f"API Response: Ping failed - {response.get('error', 'Unknown error')}")
+    
+    return jsonify(response)
+
 def extract_snippet(content, query, context_length=150):
     """Extract text snippet around search term"""
     lower_content = content.lower()
@@ -1654,23 +1774,19 @@ def extract_snippet(content, query, context_length=150):
     return snippet
 
 def start_server():
-    import platform
     import logging
     
-    if platform.system() == "Windows":
-        try:
-            from waitress import serve
-            serve(app, host='0.0.0.0', port=5000, threads=8)
-            return
-        except ImportError:
-            pass
-    
-    # Suppress werkzeug logs
-    logging.getLogger('werkzeug').setLevel(logging.ERROR)
-    
-    print("🚀 Local Web Interface served with Flask development server...")
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
-    
+    try:
+        from waitress import serve
+        print("🚀 Local Web Interface starting with Waitress server...")
+        serve(app, host='0.0.0.0', port=5000, threads=8)  # Single-threaded for nomadnet compatibility
+    except ImportError:
+        # Fallback to Flask dev server if waitress not installed
+        logging.getLogger('werkzeug').setLevel(logging.ERROR)
+        print("⚠️  Waitress not found, falling back to Flask dev server...")
+        print("🚀 Local Web Interface starting...")
+        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+        
 def main():
     """
     Main function with improved error handling and status management

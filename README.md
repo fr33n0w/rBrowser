@@ -276,6 +276,11 @@ docker compose down
 - 📥 **File Download**: Support download for files hosted on nomadnet nodes with progress notification!
 - 📝 **User inputs support**: Form, URL, and input boxes sending user input are supported.
 - 🔐 **Fingerprint**: Send identity and lxmf address to the host node
+- 📊**Network Diagnostics**: 
+  - 📡 Ping functionality to test remote node reachability and measure round-trip time
+  - 🗺️ Hop count display showing network distance to destination nodes
+  - ℹ️ Detailed node information including announce data and last seen timestamps
+  - 🔗 Reticulum connection status bar
 - 🔍 **NomadNet Search Engine**: Local NomadNet Nodes page-caching Search Engine
 - 📱 **Optimized UI**: Auto-adapt UI for small screen devices like mobiles and tablets
 - 🐳 **Docker Version**: Dependencies-free installation on docker
@@ -379,7 +384,7 @@ This project includes local available versions of:
 
 - micronparser.js for NomadNet pages rendering 
 - DOMPurify.min.js for html security
-- fingerptint, go and star icons from flaticon.com
+- fingerptint, go, ping and star icons from flaticon.com
 
 The Web UI is served by:
 

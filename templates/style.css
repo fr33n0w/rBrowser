@@ -595,7 +595,7 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 }
 
 .fingerprint-btn { 
-    background: #ffffff; 
+    background: #30363d; 
     border: 1px solid #30363d; 
     color: #ffffff; 
     padding: 6px 11px; 
@@ -609,8 +609,19 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     justify-content: center;
 }
 
-.fingerprint-btn:hover { background: #1ec735; }
-.fingerprint-btn:disabled { background: #6e7681; cursor: not-allowed; opacity: 0.6; }
+.fingerprint-btn img {
+    filter: invert(1) grayscale(1) brightness(10);
+}
+
+.fingerprint-btn:hover { 
+    background: #1ec735; 
+}
+
+.fingerprint-btn:disabled { 
+    background: #6e7681; 
+    cursor: not-allowed; 
+    opacity: 0.6; 
+}
 
 /* Touch device optimization - Complete mobile CSS */
 @media (hover: none) and (pointer: coarse) {
@@ -890,4 +901,30 @@ html, body {
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
     }
+}
+
+.ping-btn { 
+    background: #30363d; 
+    border: 1px solid #30363d; 
+    color: #58a6ff; 
+    padding: 6px 11px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-size: 15px; 
+    font-weight: 600; 
+    transition: all 0.30s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ping-btn:hover { 
+    background: #1ec735; 
+    border-color: #58a6ff; 
+}
+
+.ping-btn:disabled { 
+    background: #6e7681; 
+    cursor: not-allowed; 
+    opacity: 0.6; 
 }

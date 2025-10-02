@@ -64,6 +64,9 @@
             <input type="text" class="address-bar" id="address-bar" placeholder="Enter NomadNet URL (hash:/path/to/page.mu)" onkeypress="handleAddressBarEnter(event)">
             <button class="go-btn" onclick="navigateToUrl()" title="Navigate to url page"><img src="/templates/go.png" alt="" style="width: 19px; height: 19px; vertical-align: middle;"></button>
             <button class="star-btn" onclick="addCurrentPageToFavorites()" title="Add current page to favorites"><img src="/templates/star.png" alt="" style="width: 21px; height: 21px; vertical-align: middle;"></button>
+            <button class="ping-btn" onclick="pingCurrentNode()" title="Ping current node">
+                <img src="/templates/ping.png" alt="Ping" title="Ping remote Node" style="width: 20px; height: 20px; vertical-align: middle;">                
+            </button>
             <button class="fingerprint-btn" onclick="sendFingerprintToCurrentNode()" title="Send fingerprint to current node">
                 <img src="/templates/fingerprint.png" alt="" style="width: 20px; height: 20px; vertical-align: middle;">                
             </button>           
@@ -2270,6 +2273,10 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     <div style="margin-bottom: 8px;"><strong style="color: #ffa657;">Node Announced:</strong> ${nodeAnnounceCount} time(s)</div>
                 </div>
                 <div style="margin-top: 12px; display: flex; gap: 8px; justify-content: center;">
+                    <button onclick="pingNode('${hash}', '${name}'); this.parentElement.parentElement.remove();" 
+                            style="background: #0969da; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        Ping Node
+                    </button>
                     <button onclick="copyHashToClipboard('${hash}');" 
                             style="background: #238636; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                         Copy Hash
@@ -2290,9 +2297,147 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             }, 30000);
         }
 
+function pingCurrentNode() {
+    const tab = getActiveTab();
+    if (!tab || !tab.selectedNode) {
+        showNotification(
+            'No current node selected for ping',
+            'warning',
+            4000
+        );
+        return;
+    }
+
+    const nodeName = tab.knownNodeName || getNodeName(tab.selectedNode);
+    pingNode(tab.selectedNode, nodeName);
+}
+
+function pingNode(hash, name) {
+    const notification = showNotification(
+        `Pinging ${name}...<br>Measuring round-trip time...`,
+        'info',
+        15000
+    );
+
+    const pingStart = Date.now();
+
+    fetch(`/api/ping/${hash}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+
+        if (data.status === 'success') {
+            const rtt = data.rtt || ((Date.now() - pingStart) / 1000);
+            
+            // Get hop information
+            const nodeData = cachedNodes.find(n => n.hash === hash);
+            const hops = nodeData ? nodeData.hops : 'Unknown';
+            
+            showPingAlert(name, hash, rtt, hops);
+        } else {
+            showNotification(
+                `❌ Ping failed to ${name}<br><br><strong>Error:</strong> ${data.error || 'Unknown error'}`,
+                'error',
+                8000
+            );
+        }
+    })
+    .catch(error => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+
+        console.error('Ping error:', error);
+        showNotification(
+            `Network error pinging ${name}<br><br><strong>Error:</strong> ${error.message}`,
+            'error',
+            6000
+        );
+    });
+}
+
+function showPingAlert(nodeName, nodeHash, rtt, hops) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10001;
+        background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;
+    `;
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        background: #161b22; border: 2px solid #30363d; color: #e6edf3;
+        padding: 20px; border-radius: 8px; max-width: 450px; min-width: 350px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    `;
+    
+    const hopsDisplay = hops === 'Unknown' ? 'Unknown' : `${hops} ${hops === 1 ? 'hop' : 'hops'}`;
+    
+    dialog.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: #3fb950; font-size: 18px;">✓ Valid Ping Reply!</h3>
+            <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                    style="background: none; border: none; color: #7d8590; cursor: pointer; font-size: 20px; padding: 0;">&times;</button>
+        </div>
+        <div style="line-height: 1.8; font-size: 14px;">
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #ffa657;">Node:</strong> 
+                <span style="color: #e6edf3;">${nodeName}</span>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #ffa657;">Address:</strong> 
+                <span style="font-family: monospace; font-size: 12px; background: #21262d; padding: 2px 6px; border-radius: 3px;">${nodeHash}</span>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #ffa657;">Ping Duration:</strong> 
+                <span style="color: #3fb950; font-weight: bold;">${rtt.toFixed(3)}s</span>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #ffa657;">Hops There:</strong> 
+                <span style="color: #58a6ff;">${hopsDisplay}</span>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #ffa657;">Hops Back:</strong> 
+                <span style="color: #58a6ff;">${hopsDisplay}</span>
+            </div>
+        </div>
+        <div style="margin-top: 20px; text-align: center;">
+            <button onclick="this.parentElement.parentElement.parentElement.remove();" 
+                    style="background: #238636; color: white; border: none; padding: 8px 24px; border-radius: 4px; cursor: pointer; font-size: 13px;">
+                OK
+            </button>
+        </div>
+    `;
+    
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            document.body.removeChild(overlay);
+        }
+    });
+    
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            document.removeEventListener('keydown', escapeHandler);
+            if (overlay.parentNode) {
+                document.body.removeChild(overlay);
+            }
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+}
+
 // Cached Search Engine system
 
-// Add this to your existing JavaScript
 function createSearchTab() {
     const searchTabId = 'search-tab';
     
