@@ -283,6 +283,8 @@ docker compose down
   - 🔗 Reticulum connection status bar
 - 🔍 **NomadNet Search Engine**: Local NomadNet Nodes page-caching Search Engine
 - 📱 **Optimized UI**: Auto-adapt UI for small screen devices like mobiles and tablets
+- 📄 **Text/ASCII ART Page Mode**: 
+  - ℹ️ Intelligent algorithm for TEXT or ASCII ART pages detection, with automatic rendering optimization
 - 🐳 **Docker Version**: Dependencies-free installation on docker
 
 

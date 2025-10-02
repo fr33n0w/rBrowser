@@ -76,7 +76,14 @@
                 <span class="page-title"><center>Select a node from the announce list, favorites, or paste an address into the bar to navigate pages.</center></span>
                 <span class="page-details"></span>
             </div>
-            <button class="view-toggle">Raw View</button>
+            <button class="view-toggle" title="Toggle between rendered and raw view">Raw View</button>
+            <div class="ascii-control" style="position: absolute; top: 50%; transform: translateY(-50%); right: 120px; display: none; align-items: center; gap: 8px;">
+                <span class="ascii-status" style="color: #e6edf3; font-size: 12px; font-weight: 600;">Text Mode</span>
+                <label class="switch">
+                    <input type="checkbox" class="ascii-switch" onchange="toggleAsciiOptimization()">
+                    <span class="slider"></span>
+                </label>
+            </div>
         </div>
         <div class="browser-area">
             <div class="page-content">
@@ -585,21 +592,39 @@ function toggleViewTab() {
     
     const content = document.querySelector(`#${tab.id} .page-content`);
     const toggle = document.querySelector(`#${tab.id} .view-toggle`);
+    const asciiSwitch = document.querySelector(`#${tab.id} .ascii-switch`);
     
     if (tab.isRawView) {
+        // Switching back to rendered view
         const renderedHtml = parseMicronContent(tab.currentRawContent);
         content.innerHTML = renderedHtml;
         content.className = 'page-content';
         
+        // Restore the ASCII optimization state if it was enabled
+        if (tab.asciiOptimized) {
+            content.classList.add('ascii-optimized');
+        }
+        
         addClickHandlersToCurrentTab();
         
-        toggle.textContent = 'Raw View';
+        toggle.textContent = 'Raw Page';
         tab.isRawView = false;
+        
+        // Re-enable ASCII switch
+        if (asciiSwitch) {
+            asciiSwitch.disabled = false;
+        }
     } else {
+        // Switching to raw view
         content.innerHTML = escapeHtml(tab.currentRawContent);
         content.className = 'page-content raw';
-        toggle.textContent = 'Rendered View';
+        toggle.textContent = 'Rendered';
         tab.isRawView = true;
+        
+        // Disable ASCII switch in raw view
+        if (asciiSwitch) {
+            asciiSwitch.disabled = true;
+        }
     }
 }
 
@@ -1166,7 +1191,41 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                         viewToggle.style.display = 'block';
                         viewToggle.textContent = 'Raw View';
                     }
-                    
+
+                    // Show ASCII control
+                    const asciiControl = document.querySelector(`#${tab.id} .ascii-control`);
+                    if (asciiControl) {
+                        asciiControl.style.display = 'flex';
+                    }
+
+                    // Reset to default state
+                    const asciiSwitch = document.querySelector(`#${tab.id} .ascii-switch`);
+                    const asciiStatus = document.querySelector(`#${tab.id} .ascii-status`);
+                    if (asciiSwitch && asciiStatus) {
+                        asciiSwitch.checked = false;
+                        asciiStatus.textContent = 'Text Mode';
+                    }
+
+                    tab.asciiOptimized = false;
+
+                    // Auto-detect and apply
+                    const contentType = detectContentType(tab.currentRawContent);
+                    if (contentType === 'ascii') {
+                        asciiSwitch.checked = true;
+                        toggleAsciiOptimization();
+                        showNotification(
+                            '🎨 <strong>Page Mode Detected: ASCII Art</strong>',
+                            'success',
+                            3000
+                        );
+                    } else {
+                        showNotification(
+                            '📄 <strong>Page Mode Detected: TEXT</strong>',
+                            'success',
+                            3000
+                        );
+                    }
+
                     // Only update title if this tab is still active
                     if (tab.id === activeTabId) {
                         tab.setTitle(nodeName);
@@ -1183,6 +1242,11 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     if (pageUrl) pageUrl.textContent = '';
                     if (viewToggle) viewToggle.style.display = 'none';
                     
+                    const asciiToggle = document.querySelector(`#${tab.id} .ascii-toggle`);
+                    if (asciiToggle) {
+                        asciiToggle.style.display = 'none';
+                    }
+
                     // Only update title if this tab is still active
                     if (tab.id === activeTabId) {
                         tab.setTitle('Error');
@@ -2782,6 +2846,125 @@ async function loadCacheStats() {
         `;
     } catch (error) {
         document.getElementById('cache-stats').innerHTML = 'Cache stats unavailable';
+    }
+}
+
+function toggleAsciiOptimization() {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    const content = document.querySelector(`#${tab.id} .page-content`);
+    const asciiSwitch = document.querySelector(`#${tab.id} .ascii-switch`);
+    const asciiStatus = document.querySelector(`#${tab.id} .ascii-status`);
+    
+    if (!content || !asciiSwitch || !asciiStatus) return;
+    
+    // Toggle the optimization mode
+    content.classList.toggle('ascii-optimized');
+    
+    // Update status text based on state
+    if (content.classList.contains('ascii-optimized')) {
+        asciiStatus.textContent = 'Ascii Mode';
+    } else {
+        asciiStatus.textContent = 'Text Mode';
+    }
+    
+    // Store preference per tab
+    tab.asciiOptimized = content.classList.contains('ascii-optimized');
+}
+
+function detectContentType(content) {
+    if (!content) return 'text';
+    
+    // Count lines
+    const lines = content.split('\n');
+    const totalLines = lines.length;
+    if (totalLines < 3) return 'text';
+    
+    let asciiArtLines = 0;
+    let textLines = 0;
+    
+    // Comprehensive character sets
+    const boxDrawingChars = /[─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬┏┓┗┛┣┫┳┻╋━┃╒╓╕╖╘╙╛╜╞╟╡╢╤╥╧╨╪╫]/g;
+    const blockChars = /[█▓▒░▀▄▌▐▖▗▘▙▚▛▜▝▞▟■□▪▫●○◆◇]/g;
+    const repeatedSpecialChars = /([█▓▒░▀▄■●○◆◇★☆▲△▼▽═─│┃━=\-_#@*])\1{5,}/;
+    
+    // Text indicators - common words and sentence patterns
+    const hasCommonWords = (line) => {
+        const commonWords = /\b(the|is|are|was|were|have|has|will|can|this|that|with|from|for|and|or|but|to|in|on|at)\b/i;
+        return commonWords.test(line);
+    };
+    
+    const hasSentenceStructure = (line) => {
+        // Check for sentence-like patterns (capital letter followed by words and punctuation)
+        return /^[A-Z][a-z\s]{10,}[.!?]/.test(line.trim());
+    };
+    
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed.length < 6) return;
+        
+        // Count character types
+        const boxCount = (trimmed.match(boxDrawingChars) || []).length;
+        const blockCount = (trimmed.match(blockChars) || []).length;
+        const hasRepeated = repeatedSpecialChars.test(trimmed);
+        
+        // Calculate ratios
+        const alphanumeric = trimmed.replace(/[^a-zA-Z0-9]/g, '').length;
+        const alphaRatio = alphanumeric / trimmed.length;
+        const specialRatio = 1 - alphaRatio;
+        
+        // Check for text characteristics
+        const looksLikeText = hasCommonWords(trimmed) || hasSentenceStructure(trimmed);
+        const isVeryLongLine = trimmed.length > 60;
+        
+        // ASCII art scoring
+        if ((boxCount >= 3 || blockCount >= 3 || hasRepeated || specialRatio > 0.5) && 
+            !looksLikeText) {
+            asciiArtLines++;
+        }
+        // Text scoring - strong text indicators
+        else if (looksLikeText || (alphaRatio > 0.7 && trimmed.length > 20)) {
+            textLines++;
+        }
+        // Long lines with ASCII chars but also text
+        else if (isVeryLongLine && (boxCount > 0 || blockCount > 0) && !looksLikeText) {
+            asciiArtLines += 0.5; // Partial score
+        }
+    });
+    
+    // Check for ASCII art concentration at the beginning
+    let consecutiveAsciiLines = 0;
+    let maxConsecutive = 0;
+    for (let i = 0; i < Math.min(10, lines.length); i++) {
+        const line = lines[i].trim();
+        const boxCount = (line.match(boxDrawingChars) || []).length;
+        const blockCount = (line.match(blockChars) || []).length;
+        
+        if (boxCount >= 3 || blockCount >= 3) {
+            consecutiveAsciiLines++;
+            maxConsecutive = Math.max(maxConsecutive, consecutiveAsciiLines);
+        } else {
+            consecutiveAsciiLines = 0;
+        }
+    }
+    
+    const asciiRatio = asciiArtLines / totalLines;
+    const textRatio = textLines / totalLines;
+    
+    console.log(`ASCII detection: ${asciiArtLines.toFixed(1)} ASCII lines, ${textLines} text lines out of ${totalLines} total`);
+    console.log(`Ratios: ASCII ${(asciiRatio * 100).toFixed(1)}%, Text ${(textRatio * 100).toFixed(1)}%, Max consecutive: ${maxConsecutive}`);
+    
+    // Decision logic with text override
+    if (textRatio > 0.4) {
+        // Strong text content
+        return 'text';
+    } else if (asciiRatio > 0.25 || maxConsecutive >= 3) {
+        // ASCII art present
+        return 'ascii';
+    } else {
+        // Default to text for ambiguous cases
+        return 'text';
     }
 }
 

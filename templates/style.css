@@ -245,8 +245,8 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
         
 .view-toggle {
     position: absolute;
-    top: 50%; /* CHANGED: center vertically */
-    transform: translateY(-50%); /* ADDED: perfect centering */
+    top: 50%;
+    transform: translateY(-50%);
     right: 20px;
     background: #21262d;
     border: 1px solid #30363d;
@@ -258,6 +258,7 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     transition: all 0.12s ease;
     z-index: 10;
     display: none;
+    min-width: 90px; 
 }
 
 .view-toggle:hover {
@@ -277,19 +278,6 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 }
         
 /* Fixed content display styles */
-.page-content { 
-    font-size: 14px; 
-    line-height: 1.7; 
-    color: #e6edf3; 
-    background: #0d1117; 
-    padding: 28px; 
-    border-radius: 8px; 
-    border: 1px solid #21262d; 
-    min-height: calc(100vh - 280px);
-    max-width: 100%;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-}
 .page-content.raw { 
     white-space: pre-wrap; 
     font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace; 
@@ -927,4 +915,150 @@ html, body {
     background: #6e7681; 
     cursor: not-allowed; 
     opacity: 0.6; 
+}
+
+.ascii-toggle {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 120px; /* Increase space between buttons */
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.12s ease;
+    z-index: 10;
+    display: none;
+    min-width: 90px; /* Fixed width */
+}
+
+.ascii-toggle:hover {
+    background: #30363d;
+    border-color: #58a6ff;
+}
+
+.ascii-toggle.ascii-mode {
+    background: #58a6ff;
+    color: #0d1117;
+    border-color: #58a6ff;
+}
+
+.page-content {
+    font-size: 15px;
+    line-height: 1.2;  /* Default: optimized for text */
+    letter-spacing: 0px;
+    color: #e6edf3;
+    background: #0d1117;
+    padding: 25px;
+    border-radius: 8px;
+    border: 1px solid #21262d;
+    min-height: calc(100vh - 280px);
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    font-family: 'Consolas', 'Courier New', 'Liberation Mono', monospace;
+    font-weight: 600;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: unset;
+    font-smooth: never;
+    transition: all 0.2s ease;
+}
+
+.page-content.ascii-optimized {
+    font-size: 16px;
+    line-height: 1.0;  /* Optimized for ASCII art */
+}
+
+.header {
+    background: #21262d;
+    padding: 12px 24px; 
+    color: #f0f6fc;
+    border-bottom: 1px solid #30363d;
+    position: relative;
+    height: 50px;
+    min-height: 50px; 
+    max-height: 50px; 
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px; /* Add spacing between elements */
+}
+
+.view-toggle,
+.ascii-toggle {
+    position: relative; /* Change from absolute */
+    top: auto;
+    right: auto;
+    transform: none;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.12s ease;
+    z-index: 10;
+    display: none;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+.ascii-control {
+    z-index: 10;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #30363d;
+    transition: .3s;
+    border-radius: 24px;
+    border: 1px solid #58a6ff;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #e6edf3;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #58a6ff;
+}
+
+input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+input:disabled + .slider {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
