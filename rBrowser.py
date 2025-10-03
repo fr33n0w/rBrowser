@@ -1471,11 +1471,11 @@ def api_connection_status():
         
         elif connection_state == "connected":
             # Still waiting for first announces
-            if app_uptime < 45:
+            if app_uptime < 60:
                 return jsonify({
                     "status": "waiting", 
-                    "message": "Waiting for announces...",
-                    "color": "yellow"
+                    "message": "Connected! <span style='color: #FFC107;'>Waiting for announces...</span> ",
+                    "color": "green"
                 })
             elif app_uptime < 120:
                 return jsonify({
@@ -1496,7 +1496,7 @@ def api_connection_status():
                 if time_since_last_announce and time_since_last_announce > 300:  # 5 minutes
                     return jsonify({
                         "status": "waiting",
-                        "message": "No recent announces (connection may be stale)",
+                        "message": "No recent announces, waiting...",
                         "color": "yellow"
                     })
                 else:
@@ -1544,6 +1544,16 @@ def api_search_cache():
                 name_file = node_dir / "node_name.txt"
                 node_name = name_file.read_text(encoding='utf-8') if name_file.exists() else "Unknown Node"
                 
+                # Get cached timestamp
+                cached_at_file = node_dir / "cached_at.txt"
+                cached_at = "Unknown"
+                if cached_at_file.exists():
+                    try:
+                        cached_datetime = datetime.fromisoformat(cached_at_file.read_text().strip())
+                        cached_at = cached_datetime.strftime("%Y-%m-%d %H:%M:%S")
+                    except:
+                        cached_at = "Unknown"
+                
                 # Search index.mu
                 index_file = node_dir / "index.mu"
                 if index_file.exists():
@@ -1558,7 +1568,8 @@ def api_search_cache():
                                 'snippet': snippet,
                                 'url': f"{node_dir.name}:/page/index.mu",
                                 'page_name': 'index.mu',
-                                'page_path': '/page/index.mu'
+                                'page_path': '/page/index.mu',
+                                'cached_at': cached_at
                             })
                             
                             if len(results) >= search_limit:
@@ -1584,7 +1595,8 @@ def api_search_cache():
                                     'snippet': snippet,
                                     'url': f"{node_dir.name}:/page/{page_name}",
                                     'page_name': page_name,
-                                    'page_path': f'/page/{page_name}'
+                                    'page_path': f'/page/{page_name}',
+                                    'cached_at': cached_at
                                 })
                         except Exception as e:
                             print(f"Error reading additional page {page_file}: {e}")
@@ -1722,21 +1734,40 @@ def api_cache_stats():
     cache_dir = browser.cache_dir
     node_count = 0
     page_count = 0
+    valid_page_count = 0
     total_size = 0
     
     if cache_dir.exists():
         for node_dir in cache_dir.iterdir():
             if node_dir.is_dir():
                 node_count += 1
-                for file in node_dir.rglob("*"):
+                # Count only .mu files
+                for file in node_dir.rglob("*.mu"):
                     if file.is_file():
                         page_count += 1
                         total_size += file.stat().st_size
+                        
+                        # Check if page is valid (doesn't contain "Request failed")
+                        try:
+                            content = file.read_text(encoding='utf-8', errors='ignore')
+                            if "Request failed" not in content:
+                                valid_page_count += 1
+                        except Exception as e:
+                            print(f"Error reading {file}: {e}")
+    
+    # Format size
+    if total_size < 1024:
+        cache_size = f"{total_size} B"
+    elif total_size < 1024 * 1024:
+        cache_size = f"{total_size / 1024:.1f} KB"
+    else:
+        cache_size = f"{total_size / (1024 * 1024):.1f} MB"
     
     return jsonify({
         'node_count': node_count,
         'page_count': page_count,
-        'cache_size': f"{total_size / 1024:.1f} KB"
+        'valid_page_count': valid_page_count,
+        'cache_size': cache_size
     })
 
 @app.route('/api/ping/<node_hash>', methods=['POST'])

@@ -44,7 +44,7 @@
                     <!-- Tabs will be dynamically created here -->
                 </div>
                 <button class="new-tab-btn" onclick="createNewTab()">+ New Tab</button>
-                <button class="search-tab-btn" onclick="createSearchTab()" title="Search cached pages">🔍 Search Engine</button>
+                <button class="search-tab-btn" onclick="createSearchTab()" title="Search cached pages">🔍 NomadNet Search Engine</button>
             </div>
             <div class="tab-content-wrapper" id="tab-content-wrapper">
                 <!-- Each tab will have its own content area -->
@@ -89,7 +89,21 @@
             <div class="page-content">
                 <div class="welcome">
                     <h2>rBrowser v1.0</h2>
-                    <p>Welcome to the NomadNet Standalone Browser.<br>This browser connects to Reticulum and listens for announces of NomadNet Nodes serving pages.<br>Wait for announces and select a node from the sidebar to explore the distributed content<br>or navigate manually with the navigation bar.</p>
+                    <p>Welcome to the NomadNet Standalone Browser.<br>This browser connects to Reticulum and listens for announces of NomadNet Nodes serving pages.<br>Wait for announces and select a node from the sidebar to explore the distributed content<br>or navigate manually with the navigation bar.</p><br>
+                    <button onclick="createSearchTab()" style="
+                        background: #0969da; 
+                        color: white; 
+                        border: none; 
+                        padding: 12px 24px; 
+                        border-radius: 6px; 
+                        cursor: pointer; 
+                        font-size: 14px; 
+                        font-weight: 600;
+                        margin-top: 20px;
+                        transition: all 0.2s ease;
+                    " onmouseover="this.style.background='#1f6feb'" onmouseout="this.style.background='#0969da'">
+                        🔍 Open NomadNet Search Engine
+                    </button>
                 </div>
             </div>
         </div>
@@ -2529,11 +2543,11 @@ function createSearchTabContent(tab) {
     content.id = tab.id;
     
     content.innerHTML = `
-        <div class="search-interface" style="padding: 20px; margin: 0; height: 100%; display: flex; flex-direction: column;">
+         <div class="search-interface" style="padding: 20px 20px 0 20px; margin: 0; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <div>
-                    <h2 style="color: #f0f6fc; margin: 0;">🔍 NomadNet Page Search</h2>
-                    <p style="color: #7d8590; margin: 3px 0 0 0;">Search through cached pages from announced nodes</p>
+                    <h2 style="color: #f0f6fc; margin: 0;">NomadNet Search Engine</h2>
+                    <p style="color: #7d8590; margin: 3px 0 0 0;">Search through local cached pages from announced nodes, edit your preferences in ⚙️Settings</p>
                 </div>
                 <button id="toggle-settings-btn" onclick="toggleSearchSettings()" 
                         style="background: #21262d; border: 1px solid #30363d; color: #e6edf3; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
@@ -2601,6 +2615,9 @@ function createSearchTabContent(tab) {
                             <button onclick="cacheAdditionalForAll()" style="background: #7c3aed; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                                 Start Manual Caching of Additional Pages for All Nodes
                             </button>
+                            <button onclick="toggleSearchSettings()" style="background: #da3633; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
+                                Save & Close Search Engine Settings
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2619,16 +2636,25 @@ function createSearchTabContent(tab) {
             <div id="search-results" style="
                 flex: 1; 
                 overflow-y: auto; 
-                margin-top: 20px; 
-                min-height: calc(100vh - 250px);
-                max-height: calc(100vh - 250px);
+                margin-top: 20px;
+                margin-bottom: 0;
                 border: 1px solid #30363d;
-                border-radius: 6px;
+                border-radius: 6px 6px 0 0;
                 padding: 10px;
                 background: #0d1117;
             "></div>
             
-            <div id="cache-stats" style="margin-top: 15px; color: #7d8590; font-size: 12px; flex-shrink: 0;"></div>
+            <div id="cache-stats" style="
+                margin: 0;
+                padding: 10px 12px 15px 12px;
+                color: #7d8590;
+                font-size: 14px;
+                flex-shrink: 0;
+                background: #161b22;
+                border-top: 1px solid #30363d;
+                border-radius: 0 0 6px 6px;
+            "></div>
+
         </div>
     `;
     
@@ -2657,8 +2683,15 @@ function toggleAutoCaching() {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: 'toggle_auto_cache', enabled: enabled})
+    })
+    .then(() => {
+        showNotification(
+            enabled ? 'Auto-caching enabled' : 'Auto-caching disabled', 
+            enabled ? 'success' : 'info',
+            3000
+        );
+        loadCacheStats();
     });
-    showNotification(enabled ? 'Search Engine Auto-caching enabled' : 'Search Engine Auto-caching disabled', 'success');
 }
 
 function clearAllCache() {
@@ -2744,11 +2777,11 @@ function displaySearchResults(results, query) {
                     <h4 style="color: #58a6ff; margin: 0; font-size: 16px;">${escapeHtml(result.node_name)}</h4>
                     <button onclick="browseToSearchResult('${result.url}')" 
                             style="background: #0969da; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                        Open
+                        Visit Page
                     </button>
                 </div>
                 <div style="color: #7d8590; font-size: 12px; font-family: monospace; margin-bottom: 8px;">
-                    Node Address: <span style="color: #ffffff;">${result.node_hash}</span> • Result from page: <span style="color: #ffa657;">${result.page_path}</span>
+                    Node Address: <span style="color: #ffffff;">${result.node_hash}</span> • Result from page: <span style="color: #ffa657;">${result.page_path}</span> • Cached on: <span style="color: #ffffff;">${result.cached_at}</span>
                 </div>
                 <div style="color: #e6edf3; line-height: 1.5; background: #0d1117; padding: 10px; border-radius: 4px; font-size: 13px;">
                     ${escapeHtml(result.snippet)}
@@ -2762,19 +2795,29 @@ function displaySearchResults(results, query) {
 
 function updateCacheSizeLimit() {
     const limit = document.getElementById('cache-size-limit').value;
+    const limitText = limit === '-1' ? 'Unlimited' : `${limit} MB`;
     fetch('/api/cache-settings', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: 'update_size_limit', value: parseInt(limit)})
+    })
+    .then(() => {
+        showNotification(`Cache size limit set to ${limitText}`, 'success', 3000);
+        loadCacheStats();
     });
 }
 
 function updateCacheExpiry() {
     const expiry = document.getElementById('cache-expiry').value;
+    const expiryText = expiry === '-1' ? 'Never' : `${expiry} days`;
     fetch('/api/cache-settings', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: 'update_expiry', value: parseInt(expiry)})
+    })
+    .then(() => {
+        showNotification(`Cache expiry set to ${expiryText}`, 'success', 3000);
+        loadCacheStats();
     });
 }
 
@@ -2784,6 +2827,10 @@ function updateSearchLimit() {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: 'update_search_limit', value: parseInt(limit)})
+    })
+    .then(() => {
+        showNotification(`Search result limit set to ${limit}`, 'success', 3000);
+        loadCacheStats();
     });
 }
 
@@ -2799,7 +2846,12 @@ function toggleAdditionalPages() {
     .then(response => response.json())
     .then(data => {
         console.log('Server response:', data);
-        showNotification(enabled ? 'Additional page caching enabled' : 'Additional page caching disabled', 'success');
+        showNotification(
+            enabled ? 'Additional page caching enabled' : 'Additional page caching disabled', 
+            'success',
+            3000
+        );
+        loadCacheStats();
     })
     .catch(error => {
         console.error('Error updating setting:', error);
@@ -2836,13 +2888,37 @@ function browseToSearchResult(url) {
 
 async function loadCacheStats() {
     try {
-        const response = await fetch('/api/cache-stats');
-        const stats = await response.json();
-        
+        const [statsResponse, settingsResponse] = await Promise.all([
+            fetch('/api/cache-stats'),
+            fetch('/api/cache-settings')
+        ]);
+       
+        const stats = await statsResponse.json();
+        const settings = await settingsResponse.json();
+       
+        // Build settings summary
+        const autoCacheStatus = settings.auto_cache_enabled ? 'ON' : 'OFF';
+        const autoCacheColor = settings.auto_cache_enabled ? '#3fb950' : '#ff7b72';
+        const sizeLimit = settings.size_limit_mb === -1 ? 'Unlimited' : `${settings.size_limit_mb} MB`;
+        const expiry = settings.expiry_days === -1 ? 'Never' : `${settings.expiry_days} days`;
+        const additionalPages = settings.cache_additional ? 'Yes' : 'No';
+       
         document.getElementById('cache-stats').innerHTML = `
-            Cached nodes: ${stats.node_count} | 
-            Total pages: ${stats.page_count} | 
-            Cache size: ${stats.cache_size}
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div style="font-size: 12px;">
+                    <strong style="color: #58a6ff;">Search Engine Statistics:</strong>
+                    <span style="color: #3fb950;">${stats.node_count}</span> <span style="color: #e6edf3;">nodes found</span> •
+                    <span style="color: #3fb950;">${stats.page_count}</span> <span style="color: #e6edf3;">cached pages</span> (<span style="color: #3fb950;">${stats.valid_page_count}</span> <span style="color: #e6edf3;">valid pages</span>) •
+                    <span style="color: #e6edf3;">Local cache size: </span><span style="color: #3fb950;">${stats.cache_size}</span>
+                </div>
+                <div style="color: #e6edf3; font-size: 12px;">
+                    <strong style="color: #ffa657;">Settings:</strong>
+                    <span style="color: #e6edf3;">Auto-cache:</span> <span style="color: ${autoCacheColor};">${autoCacheStatus}</span> <span style="color: #e6edf3;">|</span>
+                    <span style="color: #e6edf3;">Limit:</span> <span style="color: #3fb950;">${sizeLimit}</span> <span style="color: #e6edf3;">|</span>
+                    <span style="color: #e6edf3;">Expiry:</span> <span style="color: #3fb950;">${expiry}</span> <span style="color: #e6edf3;">|</span>
+                    <span style="color: #e6edf3;">Additional pages:</span> <span style="color: #3fb950;">${additionalPages}</span>
+                </div>
+            </div>
         `;
     } catch (error) {
         document.getElementById('cache-stats').innerHTML = 'Cache stats unavailable';

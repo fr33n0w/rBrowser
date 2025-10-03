@@ -281,7 +281,10 @@ docker compose down
   - 🗺️ Hop count display showing network distance to destination nodes
   - ℹ️ Detailed node information including announce data and last seen timestamps
   - 🔗 Reticulum connection status bar
-- 🔍 **NomadNet Search Engine**: Local NomadNet Nodes page-caching Search Engine
+- 🔍 **NomadNet Search Engine**: Local NomadNet Nodes Exclusive Search Engine!
+  - Cache index.mu pages locally, enabled by default, edit your preferences in the settings.
+  - Search by node names or keywords inside cached pages
+  - Search Engine Statistic in the bottom bar with settings information 
 - 📱 **Optimized UI**: Auto-adapt UI for small screen devices like mobiles and tablets
 - 📄 **Text/ASCII ART Page Mode**: 
   - ℹ️ Intelligent algorithm for TEXT or ASCII ART pages detection, with automatic rendering optimization
