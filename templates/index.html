@@ -2805,7 +2805,7 @@ function displaySearchResults(results, query) {
         return;
     }
    
-    let html = `<h3 style="color: #f0f6fc; margin-bottom: 15px;">Found ${results.length} result(s) for "<span style="background-color: #ffd700; color: #0d1117; padding: 2px 4px; border-radius: 2px; font-weight: 600;">${escapeHtml(query)}</span>"</h3>`;
+    let html = `<h3 style="color: #f0f6fc; margin-bottom: 15px; font-size: 14px;">Found ${results.length} result(s) for "<span style="background-color: #ffd700; color: #0d1117; padding: 2px 4px; border-radius: 2px; font-weight: 600;">${escapeHtml(query)}</span>"</h3>`;
    
     results.forEach(result => {
         // Determine status badge
@@ -2860,7 +2860,7 @@ function displaySearchResults(results, query) {
 }
 
 function pingNodeFromSearch(nodeHash, nodeName) {
-    showNotification(`Pinging ${nodeName}...`, 'info', 3000);
+    showNotification(`Pinging ${nodeName}...<br>Waiting for node reply...`, 'info', 3000);
     
     fetch(`/api/ping/${nodeHash}`, {
         method: 'POST',

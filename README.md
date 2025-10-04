@@ -302,10 +302,11 @@ docker compose down
 ### The following features are planned for the next versions:
 
 * Prebuilt executables for Windows/Linux/macOS
-* Enhance error handling and metrics
+* Enhance error handling and metrics, improve terminal logs
 * Improve mobile UI on small screens
 * Improve overall performance
 * Implement Dark / Light Themes
+* Enhanced browser settings (log on terminal or file, disable logs, start script with arguments etc.)
 
 -----
 
