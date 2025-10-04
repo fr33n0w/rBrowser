@@ -258,6 +258,7 @@ docker compose down
   - Automatic Node listing on received announces, sorting nodes with dropdown choices
   - Detailed node announce and extended node information button
   - Add Nodes to favorites directly from the List with the star button
+  - Nodes sorting by announce time, most recent announce, most announced and alphabetical order
 - 📄 **Page Fetching**: Request and receive pages from remote nodes
 - 📝 **Micron Rendering**: Parse and display Micron markup language
 - 🖥️ **Web Interface**: Complete browser-style interface with navigation
@@ -288,7 +289,9 @@ docker compose down
 - 🔍 **NomadNet Search Engine**: Local NomadNet Nodes Exclusive Search Engine!
   - Cache index.mu pages locally, enabled by default, edit your preferences in the settings.
   - Search by node names or keywords inside cached pages
-  - Search Engine Statistic in the bottom bar with settings information 
+  - Search Engine Statistic in the bottom bar with settings information
+  - Page cache management, search result highlight, dynamic cache refresh with real-time status updates
+  - Ping functionality in search results to check if node is available
 - 📱 **Optimized UI**: Auto-adapt UI for small screen devices like mobiles and tablets
 - 📄 **Text/ASCII ART Page Mode**: 
   - ℹ️ Intelligent algorithm for TEXT or ASCII ART pages detection, with automatic rendering optimization
@@ -309,7 +312,7 @@ docker compose down
 
 ## ⚠️ Known Issues:
 
-- Input box parameter sending could fail on nodes with non-standard nomadnet micron link format, due to unique fields customization  (BTW >95% of pages are perfectly working!)
+- Input parameters sending could fail on pages with non-standard nomadnet micron link format, due to unique fields customization  (BTW >95% of pages are perfectly working!)
 
 -----
 

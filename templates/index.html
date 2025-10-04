@@ -2794,7 +2794,7 @@ async function searchCachedPages() {
 
 function displaySearchResults(results, query) {
     const resultsDiv = document.getElementById('search-results');
-    
+   
     if (results.length === 0) {
         resultsDiv.innerHTML = `
             <div style="color: #7d8590; padding: 20px; text-align: center;">
@@ -2804,30 +2804,193 @@ function displaySearchResults(results, query) {
         `;
         return;
     }
-    
-    let html = `<h3 style="color: #f0f6fc; margin-bottom: 15px;">Found ${results.length} result(s) for "${query}"</h3>`;
-    
+   
+    let html = `<h3 style="color: #f0f6fc; margin-bottom: 15px;">Found ${results.length} result(s) for "<span style="background-color: #ffd700; color: #0d1117; padding: 2px 4px; border-radius: 2px; font-weight: 600;">${escapeHtml(query)}</span>"</h3>`;
+   
     results.forEach(result => {
+        // Determine status badge
+        let statusBadge = '';
+        if (result.cache_status === 'fresh') {
+            statusBadge = '<span style="background: #238636; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">FRESH</span>';
+        } else if (result.cache_status === 'good') {
+            statusBadge = '<span style="background: #1f6feb; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">GOOD</span>';
+        } else if (result.cache_status === 'moderate') {
+            statusBadge = '<span style="background: #fb8500; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">MODERATE</span>';
+        } else if (result.cache_status === 'old') {
+            statusBadge = '<span style="background: #da3633; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">OLD</span>';
+        }
+       
+        // Escape node name for use in onclick
+        const safeNodeName = escapeHtml(result.node_name).replace(/'/g, "\\'");
+       
         html += `
-            <div style="background: #21262d; border: 1px solid #30363d; padding: 15px; margin: 10px 0; border-radius: 6px;">
+            <div style="background: #21262d; border: 1px solid #30363d; padding: 15px; margin: 10px 0; border-radius: 6px;" data-node-hash="${result.node_hash}">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                     <h4 style="color: #58a6ff; margin: 0; font-size: 16px;">${escapeHtml(result.node_name)}</h4>
-                    <button onclick="browseToSearchResult('${result.url}')" 
-                            style="background: #0969da; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                        Visit Page
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="pingNodeFromSearch('${result.node_hash}', '${safeNodeName}')" 
+                                style="background: #7c3aed; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;" 
+                                title="Ping node to check if online">
+                            Ping Node
+                        </button>
+                        <button onclick="browseToSearchResult('${result.url}')"
+                                style="background: #0969da; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            Visit Page
+                        </button>
+                    </div>
+                </div>
+                <div style="color: #7d8590; font-size: 12px; font-family: monospace; margin-bottom: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <span>Node Address: <span style="color: #ffffff;">${result.node_hash}</span></span>
+                    <span>• Result from page: <span style="color: #ffa657;">${result.page_path}</span></span>
+                    <span>• Cached on: <span class="cached-at-text" style="color: #ffffff;">${result.cached_at}</span></span>
+                    <span>• Cache Freshness: <span class="cache-freshness-badge">${statusBadge}</span></span>
+                    <button onclick="refreshNodeCache('${result.node_hash}', '${safeNodeName}')"
+                            style="background: #121416; color: white; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 10px;" title="Click here to manually refresh cached page now">
+                        Update Page Cache
                     </button>
                 </div>
-                <div style="color: #7d8590; font-size: 12px; font-family: monospace; margin-bottom: 8px;">
-                    Node Address: <span style="color: #ffffff;">${result.node_hash}</span> • Result from page: <span style="color: #ffa657;">${result.page_path}</span> • Cached on: <span style="color: #ffffff;">${result.cached_at}</span>
-                </div>
                 <div style="color: #e6edf3; line-height: 1.5; background: #0d1117; padding: 10px; border-radius: 4px; font-size: 13px;">
-                    ${escapeHtml(result.snippet)}
+                    ${result.snippet}
                 </div>
             </div>
         `;
     });
-    
+   
     resultsDiv.innerHTML = html;
+}
+
+function pingNodeFromSearch(nodeHash, nodeName) {
+    showNotification(`Pinging ${nodeName}...`, 'info', 3000);
+    
+    fetch(`/api/ping/${nodeHash}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const rtt = data.rtt || 0;
+            showNotification(
+                `✅ Node is online!<br><strong>${nodeName}</strong><br>Round-trip time: ${rtt.toFixed(3)}s`,
+                'success',
+                5000
+            );
+        } else {
+            showNotification(
+                `❌ Ping failed to ${nodeName}<br><br><strong>Error:</strong> ${data.error || 'Unknown error'}<br>Node may be offline.`,
+                'error',
+                6000
+            );
+        }
+    })
+    .catch(error => {
+        console.error('Ping error:', error);
+        showNotification(
+            `Network error pinging ${nodeName}<br><br><strong>Error:</strong> ${error.message}`,
+            'error',
+            5000
+        );
+    });
+}
+
+function refreshNodeCache(nodeHash, nodeName) {
+    const url = `/api/refresh-node-cache/${nodeHash}`;
+    
+    showNotification(`Requesting cache refresh for ${nodeName} <br>Please wait...`, 'info', 3000);
+                
+    
+    fetch(url, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'success') {
+
+            
+            // Poll for cache update (check every 2 seconds for up to 30 seconds)
+            pollCacheUpdate(data.node_hash, 15);
+        } else {
+            showNotification(
+                `❌ Failed: ${data.message}`, 
+                'error', 
+                6000
+            );
+        }
+    })
+    .catch(err => {
+        console.error('Fetch error:', err);
+        showNotification(`Network error: ${err.message}`, 'error', 5000);
+    });
+}
+
+function pollCacheUpdate(nodeHash, maxAttempts) {
+    let attempts = 0;
+    
+    const checkInterval = setInterval(() => {
+        attempts++;
+        
+        // Check if cache was updated
+        fetch(`/api/check-cache-status/${nodeHash}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.updated || attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    
+                    if (data.updated) {
+                        // Update the UI with new freshness status
+                        updateSearchResultFreshness(nodeHash, data.cache_status, data.cached_at);
+                        showNotification(
+                            `✅ Cache updated successfully!<br>Status: ${data.cache_status.toUpperCase()}`,
+                            'success',
+                            4000
+                        );
+                    } else {
+                        showNotification(
+                            '⏱️ Cache update is taking longer than expected...<br><br> (Node offline or unreachable?)',
+                            'warning',
+                            4000
+                        );
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Poll error:', err);
+                clearInterval(checkInterval);
+            });
+    }, 2000); // Check every 2 seconds
+}
+
+function updateSearchResultFreshness(nodeHash, cacheStatus, cachedAt) {
+    // Find all search results for this node hash
+    const results = document.querySelectorAll(`[data-node-hash="${nodeHash}"]`);
+    
+    results.forEach(resultDiv => {
+        // Find the freshness badge
+        const freshnessSpan = resultDiv.querySelector('.cache-freshness-badge');
+        const cachedAtSpan = resultDiv.querySelector('.cached-at-text');
+        
+        if (freshnessSpan) {
+            // Update badge color and text
+            let badgeHTML = '';
+            if (cacheStatus === 'fresh') {
+                badgeHTML = '<span class="cache-freshness-badge" style="background: #238636; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">FRESH</span>';
+            } else if (cacheStatus === 'good') {
+                badgeHTML = '<span class="cache-freshness-badge" style="background: #1f6feb; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">GOOD</span>';
+            } else if (cacheStatus === 'moderate') {
+                badgeHTML = '<span class="cache-freshness-badge" style="background: #fb8500; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">MODERATE</span>';
+            } else if (cacheStatus === 'old') {
+                badgeHTML = '<span class="cache-freshness-badge" style="background: #da3633; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">OLD</span>';
+            }
+            
+            freshnessSpan.outerHTML = badgeHTML;
+        }
+        
+        if (cachedAtSpan) {
+            cachedAtSpan.textContent = cachedAt;
+        }
+    });
 }
 
 function updateCacheSizeLimit() {

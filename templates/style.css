@@ -1138,3 +1138,52 @@ input:disabled + .slider {
 .search-btn:hover { 
     background: #1ec735; 
 }
+
+.ascii-control {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 120px;
+    display: none;
+    align-items: center;
+    gap: 6px; /* Reduced from 8px */
+    z-index: 10;
+}
+
+.ascii-status {
+    color: #e6edf3;
+    font-size: 10px; /* Reduced from 12px */
+    font-weight: 600;
+}
+
+/* Make the switch smaller */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 36px; /* Reduced from 44px */
+    height: 20px; /* Reduced from 24px */
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px; /* Reduced from 16px */
+    width: 14px; /* Reduced from 16px */
+    left: 2px; /* Adjusted */
+    bottom: 2px; /* Adjusted */
+    background-color: #e6edf3;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider:before {
+    transform: translateX(16px); /* Adjusted from 20px */
+}
+
+mark {
+    background-color: #ffd700;
+    color: #0d1117;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-weight: 600;
+}

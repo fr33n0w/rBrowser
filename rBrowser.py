@@ -1538,71 +1538,185 @@ def api_search_cache():
     cache_dir = browser.cache_dir
     search_limit = browser.cache_settings.get('search_limit', 50)
     
-    if cache_dir.exists():
-        for node_dir in cache_dir.iterdir():
-            if node_dir.is_dir():
-                name_file = node_dir / "node_name.txt"
-                node_name = name_file.read_text(encoding='utf-8') if name_file.exists() else "Unknown Node"
-                
-                # Get cached timestamp
-                cached_at_file = node_dir / "cached_at.txt"
-                cached_at = "Unknown"
-                if cached_at_file.exists():
-                    try:
-                        cached_datetime = datetime.fromisoformat(cached_at_file.read_text().strip())
-                        cached_at = cached_datetime.strftime("%Y-%m-%d %H:%M:%S")
-                    except:
-                        cached_at = "Unknown"
-                
-                # Search index.mu
-                index_file = node_dir / "index.mu"
-                if index_file.exists():
-                    try:
-                        content = index_file.read_text(encoding='utf-8', errors='ignore')
-                        if query in content.lower() or query in node_name.lower():
-                            snippet = f"Node name match: {node_name}\n\n" + extract_snippet(content, query) if query in node_name.lower() else extract_snippet(content, query)
-                            
-                            results.append({
-                                'node_hash': node_dir.name,
-                                'node_name': node_name,
-                                'snippet': snippet,
-                                'url': f"{node_dir.name}:/page/index.mu",
-                                'page_name': 'index.mu',
-                                'page_path': '/page/index.mu',
-                                'cached_at': cached_at
-                            })
-                            
-                            if len(results) >= search_limit:
-                                break
-                    except Exception as e:
-                        print(f"Error reading cache file {index_file}: {e}")
-                
-                # Search additional pages
-                pages_dir = node_dir / "pages"
-                if pages_dir.exists():
-                    for page_file in pages_dir.glob("*.mu"):
-                        if len(results) >= search_limit:
-                            break
+    try:
+        if cache_dir.exists():
+            for node_dir in cache_dir.iterdir():
+                if node_dir.is_dir():
+                    name_file = node_dir / "node_name.txt"
+                    node_name = name_file.read_text(encoding='utf-8') if name_file.exists() else "Unknown Node"
+                    
+                    # Get cached timestamp and calculate freshness
+                    cached_at_file = node_dir / "cached_at.txt"
+                    cached_at = "Unknown"
+                    cache_age_days = None
+                    cache_status = "unknown"
+                    
+                    if cached_at_file.exists():
                         try:
-                            content = page_file.read_text(encoding='utf-8', errors='ignore')
-                            if query in content.lower():
-                                page_name = page_file.name
+                            cached_datetime = datetime.fromisoformat(cached_at_file.read_text().strip())
+                            cached_at = cached_datetime.strftime("%Y-%m-%d %H:%M:%S")
+                            
+                            # Calculate cache age in days
+                            cache_age = datetime.now() - cached_datetime
+                            cache_age_days = cache_age.total_seconds() / 86400
+                            
+                            # Determine status
+                            if cache_age_days <= 3:
+                                cache_status = "fresh"
+                            elif cache_age_days <= 10:
+                                cache_status = "good"
+                            elif cache_age_days <= 20:
+                                cache_status = "moderate"
+                            else:
+                                cache_status = "old"
+                                
+                        except Exception as e:
+                            print(f"Error parsing cache date: {e}")
+                            cached_at = "Unknown"
+                    
+                    # Search index.mu
+                    index_file = node_dir / "index.mu"
+                    if index_file.exists():
+                        try:
+                            content = index_file.read_text(encoding='utf-8', errors='ignore')
+                            if query in content.lower() or query in node_name.lower():
                                 snippet = extract_snippet(content, query)
+                                if query in node_name.lower():
+                                    snippet = f"Node name match: {node_name}\n\n" + snippet
                                 
                                 results.append({
                                     'node_hash': node_dir.name,
                                     'node_name': node_name,
                                     'snippet': snippet,
-                                    'url': f"{node_dir.name}:/page/{page_name}",
-                                    'page_name': page_name,
-                                    'page_path': f'/page/{page_name}',
-                                    'cached_at': cached_at
+                                    'url': f"{node_dir.name}:/page/index.mu",
+                                    'page_name': 'index.mu',
+                                    'page_path': '/page/index.mu',
+                                    'cached_at': cached_at,
+                                    'cache_status': cache_status,
+                                    'cache_age_days': cache_age_days
                                 })
+                                
+                                if len(results) >= search_limit:
+                                    break
                         except Exception as e:
-                            print(f"Error reading additional page {page_file}: {e}")
+                            print(f"Error reading cache file {index_file}: {e}")
+                    
+                    # Search additional pages
+                    pages_dir = node_dir / "pages"
+                    if pages_dir.exists():
+                        for page_file in pages_dir.glob("*.mu"):
+                            if len(results) >= search_limit:
+                                break
+                            try:
+                                content = page_file.read_text(encoding='utf-8', errors='ignore')
+                                if query in content.lower():
+                                    page_name = page_file.name
+                                    snippet = extract_snippet(content, query)
+                                    
+                                    results.append({
+                                        'node_hash': node_dir.name,
+                                        'node_name': node_name,
+                                        'snippet': snippet,
+                                        'url': f"{node_dir.name}:/page/{page_name}",
+                                        'page_name': page_name,
+                                        'page_path': f'/page/{page_name}',
+                                        'cached_at': cached_at,
+                                        'cache_status': cache_status,
+                                        'cache_age_days': cache_age_days
+                                    })
+                            except Exception as e:
+                                print(f"Error reading additional page {page_file}: {e}")
+        
+        return jsonify(results)
+        
+    except Exception as e:
+        print(f"Search error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
     
-    return jsonify(results)
-
+@app.route('/api/refresh-node-cache/<node_hash>', methods=['POST'])
+def api_refresh_node_cache(node_hash):
+    """Refresh cache for a specific node"""
+    try:
+        print(f"=== Refresh request received for: {node_hash} ===")
+        
+        # Find node name
+        node_name = "Unknown"
+        
+        # First check active nodes
+        for hash_key, node_data in browser.nomadnet_nodes.items():
+            if node_data.get('hash') == node_hash:
+                node_name = node_data.get('name', 'Unknown')
+                print(f"Found in active nodes: {node_name}")
+                break
+        
+        # If not found, check cache
+        if node_name == "Unknown":
+            cache_dir = browser.cache_dir / node_hash
+            name_file = cache_dir / "node_name.txt"
+            if name_file.exists():
+                node_name = name_file.read_text(encoding='utf-8', errors='ignore').strip()
+                print(f"Found in cache: {node_name}")
+        
+        print(f"Queuing {node_name} for refresh...")
+        browser.cache_queue.put((node_hash, node_name))
+        print(f"Successfully queued!")
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Queued {node_name} for cache refresh',
+            'node_name': node_name,
+            'node_hash': node_hash
+        })
+        
+    except Exception as e:
+        print(f"ERROR in refresh endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+    
+@app.route('/api/check-cache-status/<node_hash>')
+def api_check_cache_status(node_hash):
+    """Check if cache has been updated recently"""
+    try:
+        cache_dir = browser.cache_dir / node_hash
+        cached_at_file = cache_dir / "cached_at.txt"
+        
+        if cached_at_file.exists():
+            cached_datetime = datetime.fromisoformat(cached_at_file.read_text().strip())
+            cached_at = cached_datetime.strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Check if updated in last 10 seconds
+            time_since_cache = (datetime.now() - cached_datetime).total_seconds()
+            updated = time_since_cache < 10
+            
+            # Calculate freshness
+            cache_age_days = time_since_cache / 86400
+            if cache_age_days <= 3:
+                cache_status = "fresh"
+            elif cache_age_days <= 10:
+                cache_status = "good"
+            elif cache_age_days <= 20:
+                cache_status = "moderate"
+            else:
+                cache_status = "old"
+            
+            return jsonify({
+                'updated': updated,
+                'cache_status': cache_status,
+                'cached_at': cached_at
+            })
+        
+        return jsonify({'updated': False})
+        
+    except Exception as e:
+        print(f"Error checking cache status: {e}")
+        return jsonify({'updated': False})
+    
 @app.route('/templates/go.png')
 def serve_go_icon():
     """Serve the go icon"""
@@ -1795,7 +1909,7 @@ def api_ping_node(node_hash):
     return jsonify(response)
 
 def extract_snippet(content, query, context_length=150):
-    """Extract text snippet around search term"""
+    """Extract text snippet around search term with highlighting"""
     lower_content = content.lower()
     query_pos = lower_content.find(query.lower())
     
@@ -1812,7 +1926,16 @@ def extract_snippet(content, query, context_length=150):
     if end < len(content):
         snippet = snippet + "..."
     
-    return snippet
+    # Highlight the query term (case-insensitive)
+    import re
+    highlighted = re.sub(
+        f'({re.escape(query)})', 
+        r'<mark>\1</mark>', 
+        snippet, 
+        flags=re.IGNORECASE
+    )
+    
+    return highlighted
 
 def start_server():
     import logging
