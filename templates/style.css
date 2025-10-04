@@ -75,13 +75,45 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     color: #e6edf3;
 }
 
+.sort-container {
+    background: #161b22;
+    padding: 6px 8px;
+    border-bottom: 1px solid #30363d;
+    flex-shrink: 0;
+    height: 32px;
+    min-height: 32px;
+    max-height: 32px;
+    position: relative;
+    z-index: 50; /* Higher than node list but lower than favorites */
+}
+
+.sort-container select {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.sort-container select:hover {
+    border-color: #58a6ff;
+}
+
+.sort-container select:focus {
+    outline: none;
+    border-color: #58a6ff;
+}
+
 .node-list-container { 
     flex: 1; 
     overflow-y: auto; 
-    height: calc(100vh - 88px);  /* 50px search + 38px status */
-    min-height: calc(100vh - 88px);
-    max-height: calc(100vh - 88px);
-    padding-top: 45px;
+    padding-top: 0;
+    position: relative; /* Changed from absolute */
+    z-index: 1; /* Lower z-index */
 }
 
 .node-list { 
@@ -155,7 +187,7 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 .nav-btn:disabled { background: #21262d; color: #656d76; cursor: not-allowed; border-color: #30363d; }
 .address-bar { flex: 1; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; padding: 8px 12px; border-radius: 4px; font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace; font-size: 13px; }
 .address-bar:focus { outline: none; border-color: #58a6ff; }
-.go-btn { background: #0969da; border: 1px solid #1f6feb; color: #ffffff; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.20s ease; }
+.go-btn { background: #30363d; border: 1px solid #3d444d; color: #ffffff; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.20s ease; }
 .go-btn:hover { background: #1ec735; }
         
 .page-info {
@@ -316,6 +348,7 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     min-height: 48px;
     max-height: 48px;
     flex-shrink: 0;
+    gap: 8px;
 }
 
 .tabs-container {
@@ -389,7 +422,7 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
     background: #161b22;
     border: 1px solid #30363d;
     color: #e6edf3;
-    padding: 8px 12px;
+    padding: 4px 8px;
     cursor: pointer;
     border-radius: 4px;
     font-size: 12px;
@@ -567,19 +600,22 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 }
 
 .star-btn:hover { 
-    background: #1ec735; 
+    background: #030c04; 
     border-color: #ffa657; 
-    color: #ffcc88;
+    color: #030c04;
 }
 
 .star-btn.favorited {
-    background: #ffa657;
+    border: 2px solid #fad42d;
     color: #0d1117;
-    border-color: #ffa657;
 }
 
 .star-btn.favorited:hover {
-    background: #ffcc88;
+    background: #110d09;
+}
+
+.star-btn.favorited img {
+    filter: brightness(0) saturate(100%) invert(70%) sepia(98%) saturate(460%) hue-rotate(2deg) brightness(104%) contrast(101%);
 }
 
 .fingerprint-btn { 
@@ -598,7 +634,7 @@ body { background: #0d1117; color: #e6edf3; margin: 0; height: 100vh; overflow: 
 }
 
 .fingerprint-btn img {
-    filter: invert(1) grayscale(1) brightness(10);
+    filter: invert(48%) sepia(89%) saturate(1690%) hue-rotate(195deg) brightness(153%) contrast(101%);
 }
 
 .fingerprint-btn:hover { 
@@ -906,6 +942,10 @@ html, body {
     justify-content: center;
 }
 
+.ping-btn img {
+    filter: invert(18%) sepia(89%) saturate(1690%) hue-rotate(195deg) brightness(153%) contrast(121%);
+}
+
 .ping-btn:hover { 
     background: #1ec735; 
     border-color: #58a6ff; 
@@ -1061,4 +1101,40 @@ input:checked + .slider:before {
 input:disabled + .slider {
     cursor: not-allowed;
     opacity: 0.5;
+}
+
+.search-tab-btn {
+    background: #0969da;
+    border: 1px solid #30363d;
+    color: white;
+    padding: 3px 7px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: all 0.12s ease;
+}
+
+.search-tab-btn:hover {
+    background: #1f6feb;
+    border: 1px solid #121416;
+}
+
+.search-btn { 
+    background: #30363d; 
+    border: 1px solid #30363d; 
+    color: #58a6ff; 
+    padding: 6px 11px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-size: 15px; 
+    font-weight: 600; 
+    transition: all 0.30s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-btn:hover { 
+    background: #1ec735; 
 }

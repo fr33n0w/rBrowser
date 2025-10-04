@@ -28,7 +28,27 @@
                     <div style="text-align: center; color: #7d8590; font-size: 11px; padding: 8px;">No favorites yet</div>
                 </div>
             </div>
-            <div class="node-list-container" style="position: absolute !important; top: 50px !important; bottom: 38px !important; left: 0 !important; right: 0 !important; overflow-y: auto !important;">
+            <div class="sort-container" style="background: #161b22; padding: 6px 8px; border-bottom: 1px solid #30363d; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: #7d8590; font-size: 11px;">Sort:</span>
+                    <select id="node-sort" onchange="sortAndFilterNodes()" style="
+                        background: #0d1117;
+                        border: 1px solid #30363d;
+                        color: #e6edf3;
+                        padding: 4px 8px;
+                        border-radius: 3px;
+                        font-size: 11px;
+                        flex: 1;
+                        cursor: pointer;
+                    ">
+                        <option value="original">Original Order (Announce Time)</option>
+                        <option value="recent">Most Recent First</option>
+                        <option value="frequent">Most Announced First</option>
+                        <option value="alphabetical">Alphabetical (A-Z)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="node-list-container" style="position: absolute !important; top: 160px !important; bottom: 38px !important; left: 0 !important; right: 0 !important; overflow-y: auto !important;">
                 <div class="node-list" id="node-list">
                     <div style="text-align: center; padding: 20px; color: #d2d7df; font-size: 12px;">Scanning for nodes...</div>
                 </div>
@@ -43,8 +63,8 @@
                 <div class="tabs-container" id="tabs-container">
                     <!-- Tabs will be dynamically created here -->
                 </div>
-                <button class="new-tab-btn" onclick="createNewTab()">+ New Tab</button>
-                <button class="search-tab-btn" onclick="createSearchTab()" title="Search cached pages">🔍 NomadNet Search Engine</button>
+                <button class="new-tab-btn" onclick="createNewTab()" title="Open New Tab Window">+ New Tab</button>
+                <button class="search-tab-btn" onclick="createSearchTab()" title="Open Search Engine Window">Search Engine</button>
             </div>
             <div class="tab-content-wrapper" id="tab-content-wrapper">
                 <!-- Each tab will have its own content area -->
@@ -62,7 +82,8 @@
                 <button class="nav-btn home-btn" onclick="navigateHome()" title="Go to index.mu homepage">🏠</button>
             </div>
             <input type="text" class="address-bar" id="address-bar" placeholder="Enter NomadNet URL (hash:/path/to/page.mu)" onkeypress="handleAddressBarEnter(event)">
-            <button class="go-btn" onclick="navigateToUrl()" title="Navigate to url page"><img src="/templates/go.png" alt="" style="width: 19px; height: 19px; vertical-align: middle;"></button>
+            <button class="go-btn" onclick="navigateToUrl()" title="Navigate to current url page"><img src="/templates/go.png" alt="" style="width: 19px; height: 19px; vertical-align: middle;"></button>
+                <button class="search-btn" onclick="openSearchFromNav()" title="Open Search Engine Window"><img src="/templates/search.png" alt="" style="width: 19px; height: 19px; vertical-align: middle;"></button>
             <button class="star-btn" onclick="addCurrentPageToFavorites()" title="Add current page to favorites"><img src="/templates/star.png" alt="" style="width: 21px; height: 21px; vertical-align: middle;"></button>
             <button class="ping-btn" onclick="pingCurrentNode()" title="Ping current node">
                 <img src="/templates/ping.png" alt="Ping" title="Ping remote Node" style="width: 20px; height: 20px; vertical-align: middle;">                
@@ -312,6 +333,24 @@ function switchToTab(tabId) {
     }
 }
 
+function updateNodeListPosition() {
+    const searchContainer = document.querySelector('.search-container');
+    const favoritesSection = document.querySelector('.favorites-section');
+    const sortContainer = document.querySelector('.sort-container');
+    const nodeListContainer = document.querySelector('.node-list-container');
+    
+    if (!nodeListContainer) return;
+    
+    let topPosition = 0;
+    
+    // Add heights of all elements above node list
+    if (searchContainer) topPosition += searchContainer.offsetHeight;
+    if (favoritesSection) topPosition += favoritesSection.offsetHeight;
+    if (sortContainer) topPosition += sortContainer.offsetHeight;
+    
+    nodeListContainer.style.top = `${topPosition}px`;
+}
+
 function closeTab(tabId, event) {
     if (event) {
         event.stopPropagation();
@@ -555,8 +594,13 @@ function navigateToUrlTab() {
     const tab = getActiveTab();
     if (tab) {
         const addressBar = document.querySelector(`#${tab.id} .address-bar`);
-        if (addressBar && addressBar.value) {
-            navigateToUrlInternalTab(addressBar.value, true);
+        if (addressBar) {
+            const url = addressBar.value.trim();
+            if (!url) {
+                showNotification('Please enter a URL in the address bar', 'warning', 3000);
+                return;
+            }
+            navigateToUrlInternalTab(url, true);
         }
     }
 }
@@ -1251,7 +1295,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     addClickHandlersToCurrentTab();
                     
                 } else {
-                    if (pageContent) pageContent.innerHTML = `<div class="error">Failed to load page: ${escapeHtml(response.error)}<br><br>This could be due to network issues or the node being offline.</div>`;
+                    if (pageContent) pageContent.innerHTML = `<div class="error">Failed to load page: ${escapeHtml(response.error)}<br><br>This could be due to network issues or, more commonly, the node being offline / unreachable.<br><br>Check your connection and logs to ensure you are connected and script is running.<br><br>Send a ping to the remote host to check if it's alive or not.</div>`;
                     if (pageTitle) pageTitle.textContent = `Error loading ${originalUrl}`;
                     if (pageUrl) pageUrl.textContent = '';
                     if (viewToggle) viewToggle.style.display = 'none';
@@ -1661,7 +1705,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     return r.json();
                 })
                 .then(nodes => {
-                    
                     const nodesHash = JSON.stringify(nodes.map(n => ({
                         hash: n.hash, 
                         name: n.name,
@@ -1684,9 +1727,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     }
                     
                     lastNodesHash = nodesHash;
-                    
                     cachedNodes = nodes;
-                    console.log('Cached nodes updated:', cachedNodes.length, 'nodes');
+                    
                     const list = document.getElementById('node-list');
                     const searchTerm = document.getElementById('node-search').value.toLowerCase();
 
@@ -1697,17 +1739,13 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
 
                     let html = '';
                     nodes.forEach((node, i) => {
-                        const activeTab = getActiveTab();
-                        const selected = '';
-            
                         const isFavorite = favoriteNodes.some(fav => fav.hash === node.hash);
                         const starIcon = isFavorite ? '★' : '☆';
                         const starColor = isFavorite ? '#ffa657' : '#7d8590';
-            
+                    
                         html += `
-                            <div class="node-item ${selected}" id="node-${i}" data-hash="${escapeHtml(node.hash)}" data-name="${escapeHtml(node.name)}" style="padding: 6px 8px; margin-bottom: 4px;">
+                            <div class="node-item" id="node-${i}" data-hash="${escapeHtml(node.hash)}" data-name="${escapeHtml(node.name)}" style="padding: 6px 8px; margin-bottom: 4px;">
                                 <div style="position: relative;">
-                                    <!-- Vertical stack of buttons on the right -->
                                     <div style="position: absolute; top: 0; right: 0; display: flex; flex-direction: column; z-index: 10;">
                                         <button class="info-btn" 
                                                 data-hash="${node.hash}" 
@@ -1725,7 +1763,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                                                 title="Toggle favorite">${starIcon}</button>
                                     </div>
                                     <div class="node-title" style="font-size: 12px; line-height: 1.2; margin-bottom: 4px;" title="NomadNet Node Name">🖥️ ${escapeHtml(node.name)}</div>
-                                    <div class="node-hash" style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;"" title="Node Hash Address">
+                                    <div class="node-hash" style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;" title="Node Hash Address">
                                         <span class="copy-icon" onclick="copyHashToClipboard('${node.hash}'); event.stopPropagation();" 
                                             style="cursor: pointer; color: #7d8590; font-size: 12px; padding: 2px;" title="Copy hash to clipboard">📋</span>
                                         <span>${node.hash}</span>
@@ -1737,10 +1775,9 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     });
 
                     list.innerHTML = html;
-
-                    if (searchTerm) {
-                        filterNodes();
-                    }
+                    
+                    // Apply current sort and filter
+                    sortAndFilterNodes();
                     
                     document.getElementById('node-count').textContent = nodes.length;
                     updateNodeSelection();
@@ -1750,7 +1787,6 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 });
             updateStarButtonState();
         }
-
         function updateStatus() {
             fetch('/api/status')
                 .then(r => {
@@ -2147,6 +2183,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 list.style.display = 'none';
                 button.textContent = 'Show';
             }
+            setTimeout(updateNodeListPosition, 10);
         }
 
         function removeFavorite(hash) {
@@ -2670,10 +2707,10 @@ function toggleSearchSettings() {
     
     if (panel.style.display === 'none') {
         panel.style.display = 'block';
-        btn.textContent = '⚙️ Hide Settings';
+        btn.textContent = '⚙️ Hide S.E. Settings';
     } else {
         panel.style.display = 'none';
-        btn.textContent = '⚙️ Settings';
+        btn.textContent = '⚙️ Show S.E. Settings';
     }
 }
 
@@ -2858,6 +2895,10 @@ function toggleAdditionalPages() {
     });
 }
 
+function openSearchFromNav() {
+    createSearchTab();
+}
+
 function cacheAdditionalForAll() {
     if (confirm('Cache additional pages for all existing nodes? This may take time.')) {
         fetch('/api/cache-settings', {
@@ -2924,6 +2965,44 @@ async function loadCacheStats() {
         document.getElementById('cache-stats').innerHTML = 'Cache stats unavailable';
     }
 }
+
+function sortAndFilterNodes() {
+    const sortBy = document.getElementById('node-sort').value;
+    const list = document.getElementById('node-list');
+    const nodeItems = Array.from(list.querySelectorAll('.node-item'));
+    
+    // Sort the nodes
+    nodeItems.sort((a, b) => {
+        const hashA = a.getAttribute('data-hash');
+        const hashB = b.getAttribute('data-hash');
+        const nodeA = cachedNodes.find(n => n.hash === hashA);
+        const nodeB = cachedNodes.find(n => n.hash === hashB);
+        
+        if (!nodeA || !nodeB) return 0;
+        
+        switch(sortBy) {
+            case 'recent':
+                return new Date(nodeB.last_seen) - new Date(nodeA.last_seen);
+            
+            case 'frequent':
+                return nodeB.node_announce_count - nodeA.node_announce_count;
+            
+            case 'alphabetical':
+                return nodeA.name.localeCompare(nodeB.name);
+            
+            case 'original':
+            default:
+                return nodeA.announce_count - nodeB.announce_count;
+        }
+    });
+    
+    // Re-append in sorted order
+    nodeItems.forEach(item => list.appendChild(item));
+    
+    // Apply search filter
+    filterNodes();
+}
+
 
 function toggleAsciiOptimization() {
     const tab = getActiveTab();
@@ -3044,11 +3123,12 @@ function detectContentType(content) {
     }
 }
 
+
     document.addEventListener('DOMContentLoaded', async function() {
         console.log('NomadNet Browser starting...');
         await initializeMicronParser();
         loadFavorites();
-
+        updateNodeListPosition();
         document.getElementById('node-list').addEventListener('click', function(e) {
 
 

@@ -253,7 +253,11 @@ docker compose down
 ## ✅ Currently Implemented
 
 - 🌐 **Reticulum Network Integration**: Full connection to Reticulum mesh network
-- 📡 **NomadNet Node Discovery**: Real-time announce monitoring and node listing
+- 📡 **NomadNet Node Discovery**: Real-time announce monitoring with:
+  - Left sidebar for node listing with Node Name, Hash Address and Announce info
+  - Automatic Node listing on received announces, sorting nodes with dropdown choices
+  - Detailed node announce and extended node information button
+  - Add Nodes to favorites directly from the List with the star button
 - 📄 **Page Fetching**: Request and receive pages from remote nodes
 - 📝 **Micron Rendering**: Parse and display Micron markup language
 - 🖥️ **Web Interface**: Complete browser-style interface with navigation
@@ -295,8 +299,10 @@ docker compose down
 ### The following features are planned for the next versions:
 
 * Prebuilt executables for Windows/Linux/macOS
-* Enhanced error handling and metrics
-* Improved mobile UI
+* Enhance error handling and metrics
+* Improve mobile UI on small screens
+* Improve overall performance
+* Implement Dark / Light Themes
 
 -----
 
@@ -389,12 +395,12 @@ This project includes local available versions of:
 
 - micronparser.js for NomadNet pages rendering 
 - DOMPurify.min.js for html security
-- fingerptint, go, ping and star icons from flaticon.com
+- fingerptint, go, ping, search and star icons from: flaticon.com
 
 The Web UI is served by:
 
 - Flask (developer web server, default in case waitress is missing)
-- Waitress (Production web server for windows / linux)
+- Waitress (Cross-platfrom, multithreaded, production web server)
 
 
 External software and all their rights are owned by the respective developers. 

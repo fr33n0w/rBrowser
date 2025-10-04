@@ -1613,6 +1613,16 @@ def serve_go_icon():
         print(f"❌ Error serving star icon: {e}")
         return "", 404
 
+@app.route('/templates/search.png')
+def serve_search_icon():
+    """Serve the search icon"""
+    try:
+        template_path = get_resource_path('templates') if 'get_resource_path' in globals() else 'templates'
+        return send_from_directory(template_path, 'search.png', mimetype='image/png')
+    except Exception as e:
+        print(f"❌ Error serving search icon: {e}")
+        return "", 404
+
 @app.route('/templates/star.png')
 def serve_star_icon():
     """Serve the star icon"""
