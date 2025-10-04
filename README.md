@@ -11,8 +11,8 @@ A modern, web-based UI for exploring **NomadNet** nodes and pages over the **Ret
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
 [![WebUI](https://img.shields.io/badge/Local-Web%20UI-green.svg)](http://localhost:5000)
 [![Reticulum](https://img.shields.io/badge/Reticulum-supported-yellow.svg)](https://github.com/markqvist/Reticulum)
-[![Developer: Frank](https://img.shields.io/badge/Developer:-Frank-blue.svg)](https://github.com/fr33n0w)
-[![Developer: Thomas](https://img.shields.io/badge/Developer:-Thomas-blue.svg)](https://github.com/neoemit)
+[![Developer Frank](https://img.shields.io/badge/Developer-Frank-blue.svg)](https://github.com/fr33n0w)
+[![Developer neoemit](https://img.shields.io/badge/Developer-neoemit-blue.svg)](https://github.com/neoemit)
 ---
 
 # 🧭 Overview
@@ -147,63 +147,63 @@ NOTE: You don't need to run RNS manually, just make sure your instance is workin
 - This repository includes a Dockerfile and a docker-compose.yaml so you can run rBrowser in a container. 
 - The compose setup builds the image and exposes the web UI on port 5000.
 
-## Docker Setup Guide
-
 ### Prerequisites
 
 #### 1. Install Docker and Docker Compose
 
-Check if already installed:
 ```bash
+# Check if already installed
+
 docker --version
 docker-compose --version
 
-
-If not installed on Debian/Ubuntu:
+# If not installed on Debian/Ubuntu
 
 # Install Docker
+
 sudo apt-get update
 sudo apt-get install docker.io
 
 # Install Docker Compose (standalone)
+
 sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
 ```
 
+Quick start with Docker installed
 
-Quick start with Docker installed:
 ```bash
+# Configure Docker User Permissions
 
-Configure Docker User Permissions:
+# Add current user to docker group (if not already present)
+sudo usermod -aG docker $USER
 
-# add current user to docker group (if not already present):
-sudo usermod -aG docker $USER 
-Important: Log out and log back in for the group change to take effect.
+# IMPORTANT: Log out and log back in for the group change to take effect
 
-# clone repo:
+# Clone repo
 git clone https://github.com/fr33n0w/rBrowser
 
-# enter root repo directory:
+# Enter root repo directory
 cd rBrowser
 
-# build and start in background
+# Build and start in background
 docker compose up -d
 
-# follow logs
+# Follow logs
 docker compose logs -f rbrowser
 
 
-Useful Commands:
+# Useful Commands
 
-# rebuild image and restart
+# Rebuild image and restart
 docker compose build --no-cache rbrowser
 docker compose up -d
 
-# Stop the container:
+# Stop the container
 docker compose down
 
-# View running containers:
+# View running containers
 docker ps
 
 ```
@@ -214,10 +214,7 @@ Notes:
     volumes:
       - ./config:/home/appuser/.reticulum/config:ro
 - Use `docker compose ps` to check service and healthcheck status (compose file includes a basic HTTP healthcheck).
-- Stop and remove containers with:
-```bash
-docker compose down
-```
+- Stop and remove containers with `docker compose down`
 
 ## At the end, open the rBrowser UI at: http://localhost:5000
 
@@ -427,6 +424,6 @@ External software and all their rights are owned by the respective developers.
 
 <div align="center">
 
-# ❤️ Developed with love by Franky & Thomas ❤️
+# ❤️ Developed with love by Franky & neoemit ❤️
 
 </div>
