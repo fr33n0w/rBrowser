@@ -1996,9 +1996,10 @@ def main():
         # Start announce monitoring
         browser.start_monitoring()
         
-        print(f"🌐 Starting local web server on http://localhost:{args.port}")
+        host_display = 'localhost' if args.host == '0.0.0.0' else args.host
+        print(f"🌐 Starting local web server on http://{host_display}:{args.port}")
         print("📡 Listening for NomadNetwork announces...")
-        print(f"🔍 Open your browser to http://localhost:{args.port}")
+        print(f"🔍 Open your browser to http://{host_display}:{args.port}")
         print("=========== Press Ctrl+C to stop and exit ============\n")
 
         # Start the web server
