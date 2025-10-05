@@ -2,7 +2,7 @@
 
 A modern, web-based UI for exploring **NomadNet** nodes and pages over the **Reticulum** network.
 
-<img width="1920" height="1080" alt="lastv1" src="https://github.com/user-attachments/assets/3f753eed-49c5-4d89-820b-e1dc1a8cb383" />
+<img width="1920" height="1080" alt="1" src="https://github.com/user-attachments/assets/23771984-fc0c-454a-bb43-c6212cdc76a7" />
 
 ---
 
@@ -149,7 +149,7 @@ NOTE: You don't need to run RNS manually, just make sure your instance is workin
 
 ### Prerequisites
 
-#### 1. Install Docker and Docker Compose
+#### Install Docker and Docker Compose
 
 ```bash
 # Check if already installed
@@ -171,7 +171,7 @@ sudo chmod +x /usr/local/bin/docker-compose
 
 ```
 
-Quick start with Docker installed
+### Quick Start (with Docker installed)
 
 ```bash
 # Configure Docker User Permissions
@@ -410,15 +410,23 @@ External software and all their rights are owned by the respective developers.
 
 ## 🖼 Screenshots:
 
+### Main Interface:
+<img width="1920" height="1080" alt="-1 main interface" src="https://github.com/user-attachments/assets/fcca646f-a565-4579-8bf2-b22ee2dafe28" />
+
+
 ### Example of link navigation with input field requests:
-<img width="1920" height="1080" alt="lastv1_2" src="https://github.com/user-attachments/assets/9c5c4335-2ad9-4367-9c2f-2fcd5cc6693d" />
+<img width="1920" height="1080" alt="2" src="https://github.com/user-attachments/assets/4e2e4128-0b06-4363-aeff-32cd428dabc5" />
+
 
 ### Example of Extended Node Informations:
-<img width="1920" height="1080" alt="lastv1_3" src="https://github.com/user-attachments/assets/5ede3dd3-9e39-433d-ac6d-19b87549ee3f" />
+<img width="1920" height="1080" alt="3" src="https://github.com/user-attachments/assets/f2c16006-72ae-4c44-8f36-020a5eda56ab" />
+
 
 ### Example of the included Search Engine feature:
-<img width="1920" height="1080" alt="lastv1_4" src="https://github.com/user-attachments/assets/c1636e8f-860b-4e0a-867f-568eacd186d7" />
-<img width="1920" height="1080" alt="search" src="https://github.com/user-attachments/assets/f00b815a-ce6e-4831-aa53-b64ce3a36c73" />
+<img width="1920" height="1080" alt="4" src="https://github.com/user-attachments/assets/bcb49099-7d5e-45f2-b940-ebb381526085" />
+
+<img width="1920" height="1080" alt="5" src="https://github.com/user-attachments/assets/0edc7f65-5397-4422-bd4c-c345fef76c83" />
+
 
 -----
 
