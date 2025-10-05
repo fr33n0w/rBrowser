@@ -149,6 +149,7 @@ NOTE: You don't need to run RNS manually, just make sure your instance is workin
 - Python 3.7+
 - pip or pipx
 - git (for installing from git repository)
+- Setuptools
 
 **Installation:**
 
