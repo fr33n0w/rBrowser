@@ -1957,8 +1957,8 @@ def main():
     Main function with improved error handling and status management
     """
     parser = argparse.ArgumentParser(description='rBrowser - Standalone NomadNet Browser')
-    parser.add_argument('--port', type=int, default=5000, help='Port to run the web server on (default: 5000)')
     parser.add_argument('--host', type=str, default='0.0.0.0', help='Host to bind the web server to (default: 0.0.0.0)')
+    parser.add_argument('--port', type=int, default=5000, help='Port to run the web server on (default: 5000)')
     args = parser.parse_args()
 
     try:

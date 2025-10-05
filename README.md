@@ -123,7 +123,7 @@ NOTE: You don't need to run RNS manually, just make sure your instance is workin
 
 3. **Start rBrowser:**
    ```bash
-   python3 rBrowser.py [--port PORT] [--host HOST]
+   python3 rBrowser.py [--host HOST] [--port PORT]
    ```
 
 4. **Open your web browser and navigate to:**
