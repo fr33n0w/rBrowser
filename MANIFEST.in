@@ -1,0 +1,8 @@
+include README.md
+include LICENSE
+include requirements.txt
+include rBrowser.py
+include config
+recursive-include templates *
+recursive-include script *
+recursive-include settings *

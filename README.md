@@ -41,7 +41,8 @@ Web-Based UI: the rBrowser interface is spawned via local web server to your loc
 * [• ⚙️ Installation](#️-installation)
   * [⚡ Prerequisites](#-prerequisites)
   * [💻 Install Option 1: Run from Terminal](#-install-option-1-run-from-terminal)
-  * [🐳 Install Option 2: Docker & Docker Compose](#-install-option-2-docker--docker-compose)
+  * [📦 Install Option 2: Install via pip from git](#-install-option-2-install-via-pip-from-git)
+  * [🐳 Install Option 3: Docker & Docker Compose](#-install-option-3-docker--docker-compose)
 * [• 🚀 Usage](#-usage)
   * [🔗 URL Formats Supported](#-url-formats-supported)
   * [🧭 Navigation](#-navigation)
@@ -137,12 +138,45 @@ NOTE: You don't need to run RNS manually, just make sure your instance is workin
    - Discovered nodes will appear in the left sidebar
    - Click on any node to browse its content and navigate pages
    - or manually paste address in the bar without waiting for announces
-   - Check bottom-left Status Bar for connection status info 
+   - Check bottom-left Status Bar for connection status info
 
 
 ---
 
-## 🐳 Install Option 2: Docker & Docker Compose
+## 📦 Install Option 2: Install via pip from git
+
+**System Requirements:**
+- Python 3.7+
+- pip or pipx
+- git (for installing from git repository)
+
+**Installation:**
+
+```bash
+pip install git+https://github.com/fr33n0w/rBrowser.git
+```
+
+**Using Pipx:**
+
+```bash
+pipx install git+https://github.com/fr33n0w/rBrowser.git
+```
+
+**Usage:**
+
+```bash
+rBrowser
+```
+
+**Optional command line arguments:**
+
+```bash
+rBrowser [--host HOST] [--port PORT]
+```
+
+---
+
+## 🐳 Install Option 3: Docker & Docker Compose
 
 - This repository includes a Dockerfile and a docker-compose.yaml so you can run rBrowser in a container. 
 - The compose setup builds the image and exposes the web UI on port 5000.
