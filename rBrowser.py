@@ -13,6 +13,7 @@ import RNS.vendor.umsgpack as msgpack
 import secrets
 from pathlib import Path
 import queue
+import argparse
 
 # Ensure UTF-8 output for Windows console
 if sys.platform == "win32":
@@ -1937,24 +1938,29 @@ def extract_snippet(content, query, context_length=150):
     
     return highlighted
 
-def start_server():
+def start_server(host='0.0.0.0', port=5000):
     import logging
-    
+
     try:
         from waitress import serve
         print("🚀 Local Web Interface starting with Waitress server...")
-        serve(app, host='0.0.0.0', port=5000, threads=8)  # Single-threaded for nomadnet compatibility
+        serve(app, host=host, port=port, threads=8)  # Single-threaded for nomadnet compatibility
     except ImportError:
         # Fallback to Flask dev server if waitress not installed
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
         print("⚠️  Waitress not found, falling back to Flask dev server...")
         print("🚀 Local Web Interface starting...")
-        app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+        app.run(host=host, port=port, debug=False, threaded=True)
         
 def main():
     """
     Main function with improved error handling and status management
     """
+    parser = argparse.ArgumentParser(description='rBrowser - Standalone NomadNet Browser')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Host to bind the web server to (default: 0.0.0.0)')
+    parser.add_argument('--port', type=int, default=5000, help='Port to run the web server on (default: 5000)')
+    args = parser.parse_args()
+
     try:
         # Check file structure first
         template_path = os.path.join('templates', 'index.html')
@@ -1990,13 +1996,14 @@ def main():
         # Start announce monitoring
         browser.start_monitoring()
         
-        print("🌐 Starting local web server on http://localhost:5000")
+        host_display = 'localhost' if args.host == '0.0.0.0' else args.host
+        print(f"🌐 Starting local web server on http://{host_display}:{args.port}")
         print("📡 Listening for NomadNetwork announces...")
-        print("🔍 Open your browser to http://localhost:5000")
+        print(f"🔍 Open your browser to http://{host_display}:{args.port}")
         print("=========== Press Ctrl+C to stop and exit ============\n")
-        
+
         # Start the web server
-        start_server()
+        start_server(args.host, args.port)
         
         return 0
         

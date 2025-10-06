@@ -27,7 +27,7 @@ It includes some exclusive features like: Automatic listening for announce, Add 
 
 **rBrowser** offers a familiar browser-like interface expereience (with address bar, navigation buttons, favorites, and more) while connecting to the decentralized Reticulum network.
 
-Web-Based UI: the rBrowser interface is spawned via local web server to your localhost on port 5000.
+Web-Based UI: the rBrowser interface is spawned via local web server (default host 0.0.0.0, default port 5000, both configurable).
 
 -----
 
@@ -121,15 +121,16 @@ NOTE: You don't need to run RNS manually, just make sure your instance is workin
    pip install -r requirements.txt
    ```
 
-3. **Start rBbrowser:**
+3. **Start rBrowser:**
    ```bash
-   python3 rBrowser.py
+   python3 rBrowser.py [--host HOST] [--port PORT]
    ```
 
 4. **Open your web browser and navigate to:**
    ```
-   http://localhost:5000
+   http://localhost:PORT
    ```
+   (Default port is 5000, default host is 0.0.0.0 if not specified)
 
 5. **Wait for node discovery:**
 
@@ -216,7 +217,7 @@ Notes:
 - Use `docker compose ps` to check service and healthcheck status (compose file includes a basic HTTP healthcheck).
 - Stop and remove containers with `docker compose down`
 
-## At the end, open the rBrowser UI at: http://localhost:5000
+## At the end, open the rBrowser UI at: http://localhost:5000 (or your configured port)
 
 
 -----
