@@ -97,4 +97,19 @@
     type = TCPClientInterface
     enabled = yes
     target_host = rmap.world
-    target_port = 4242    
+    target_port = 4242
+  [[Testnet Amsterdam]]
+    type = TCPClientInterface
+    enabled = yes
+    target_host = amsterdam.connect.reticulum.network
+    target_port = 4965
+  [[Testnet Dublin]]
+    type = TCPClientInterface
+    enabled = yes
+    target_host = dublin.connect.reticulum.network
+    target_port = 4965
+  [[Testnet Sideband]]
+    type = TCPClientInterface
+    enabled = yes
+    target_host = sideband.connect.reticulum.network:7822
+    target_port = 7822
