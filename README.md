@@ -42,6 +42,7 @@ Web-Based UI: the rBrowser interface is spawned via local web server (default ho
   * [⚡ Prerequisites](#-prerequisites)
   * [💻 Install Option 1: Run from Terminal](#-install-option-1-run-from-terminal)
   * [🐳 Install Option 2: Docker & Docker Compose](#-install-option-2-docker--docker-compose)
+  * [📱 Install Option 3: Termux on Android](#-install-option-3-termux-on-android)
 * [• 🚀 Usage](#-usage)
   * [🔗 URL Formats Supported](#-url-formats-supported)
   * [🧭 Navigation](#-navigation)
@@ -218,6 +219,65 @@ Notes:
 - Stop and remove containers with `docker compose down`
 
 ## At the end, open the rBrowser UI at: http://localhost:5000 (or your configured port)
+
+## 📱 Install Option 3: Termux on Android
+
+You can run rBrowser directly on Android by using [Termux](https://termux.dev/), which gives you a full Linux environment. This keeps the Python code unchanged but lets you browse the UI from the same handset.
+
+1. **Install Termux**
+   - Install the latest Termux build from [F-Droid](https://f-droid.org/packages/com.termux/) (Play Store builds are outdated).
+   - Open Termux once so it completes its storage setup.
+
+2. **Prepare the environment**
+   ```bash
+   pkg update && pkg upgrade
+   pkg install python git clang rust binutils make cmake pkg-config libffi openssl libsodium
+
+   # Optional but recommended
+   pip install --upgrade pip
+   ```
+   - The `cryptography` dependency (pulled in by Reticulum) builds from source on Android, so Rust, clang, and common build tools must be installed.
+   - Reticulum uses cryptography and libsodium; Termux packages provide the required native libraries.
+   - If you plan to keep the session alive while the screen is off, run `termux-wake-lock`.
+
+3. **Clone and install dependencies**
+   ```bash
+   git clone https://github.com/fr33n0w/rBrowser.git
+   cd rBrowser
+   pip install -r requirements.txt
+   ```
+   - If pip still exits with `Rust not found` or `Unsupported platform` errors, verify `rustc --version` runs inside Termux and rerun the install.
+
+4. **Configure Reticulum**
+   - Ensure your Reticulum config is available in `~/.reticulum/config` (Termux home is `/data/data/com.termux/files/home`).
+   - You can copy an existing config or bootstrap Reticulum inside Termux following the [Reticulum docs](https://reticulum.network/).
+
+5. **Run rBrowser**
+   ```bash
+   python3 rBrowser.py --host 127.0.0.1 --port 5000
+   ```
+   - `127.0.0.1` keeps the web UI bound to the phone. Use `--host 0.0.0.0` if you want to reach it from another device on the same network.
+
+6. **Open the interface**
+   - In Android’s browser (Chrome, Firefox, etc.), visit `http://127.0.0.1:5000`.
+   - Keep Termux in the foreground or use `termux-wake-lock` + Android’s battery settings to prevent the OS from suspending the session.
+
+7. **Stopping**
+   - Press `Ctrl+C` in Termux to stop the server, then `termux-wake-unlock` if you enabled the wake lock.
+
+> **Tip:** For quicker restarts, create a small shell script in Termux (e.g., `~/start-rbrowser.sh`) that activates a virtual environment, runs rBrowser, and acquires the wake lock before launching.
+
+> **Please note:** The current UI is not optimized for Android devices. Support will come soon.
+
+### Termux Troubleshooting
+
+- **“Permission denied / Address already in use” when starting Reticulum**  
+  Reticulum tries to start a shared instance and bind the interfaces defined in `~/.reticulum/config`. On Android, the default Unix socket path (`/var/run/reticulum.sock`) is not writable, and a previous Reticulum session may still hold the network ports. Fix it by either:
+  1. Stopping any old process: `pkill -f reticulum` (run inside Termux); or
+  2. Editing your Reticulum config and disabling the shared instance (`share_instance: no`) or pointing `shared_path` to a writable directory inside Termux (e.g., `/data/data/com.termux/files/home/.reticulum/reticulum.sock`), and ensuring each `TCPServer`/`TCPClient` interface uses a free port.
+
+- **Shared instance already running but unreachable**  
+  If you intentionally run `rnsd` in the background, keep it active and start rBrowser in the same session without killing it. Otherwise, stop the daemon before running rBrowser so it can bring up its own embedded Reticulum node.
 
 
 -----
