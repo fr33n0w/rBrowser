@@ -2161,9 +2161,12 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             
             let html = '';
             favoriteNodes.forEach((fav, index) => {
+                // Escape for JavaScript string (replace single quotes with escaped version)
+                const jsEscapedName = fav.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                
                 html += `
                     <div class="favorite-item" style="background: #0d1117; padding: 4px 6px; margin: 2px 0; border-radius: 3px; border: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center;">
-                        <span onclick="browseNode('${fav.hash}', '${fav.name}')" style="cursor: pointer; font-size: 11px; color: #58a6ff; flex: 1;">${fav.name}</span>
+                        <span onclick="browseNode('${fav.hash}', '${jsEscapedName}')" style="cursor: pointer; font-size: 11px; color: #58a6ff; flex: 1;">${escapeHtml(fav.name)}</span>
                         <button onclick="removeFavorite('${fav.hash}'); event.stopPropagation();" style="background: none; border: none; color: #ff7b72; cursor: pointer; font-size: 12px; padding: 2px 4px; margin-left: 6px;">×</button>
                     </div>
                 `;
