@@ -2101,21 +2101,58 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             searchInput.focus(); 
         }
 
+        function saveFavorites() {
+            fetch('/api/favorites', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({favorites: favoriteNodes})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Favorites saved to file');
+                } else {
+                    console.error('Failed to save favorites:', data.error);
+                }
+            })
+            .catch(err => {
+                console.error('Error saving favorites:', err);
+            });
+        }
+
         function loadFavorites() {
-            const stored = localStorage.getItem('nomadnet-favorites');
-            favoriteNodes = stored ? JSON.parse(stored) : [];
-            updateFavoritesDisplay();
-            
+            // Don't show the list initially, keep it hidden until we know if there are favorites
             const list = document.getElementById('favorites-list');
             const button = document.getElementById('favorites-toggle');
+            
             if (list && button) {
                 list.style.display = 'none';
                 button.textContent = 'Show';
             }
-        }
-
-        function saveFavorites() {
-            localStorage.setItem('nomadnet-favorites', JSON.stringify(favoriteNodes));
+            
+            fetch('/api/favorites')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        favoriteNodes = data.favorites || [];
+                        updateFavoritesDisplay();
+                        
+                        // Keep it hidden after loading
+                        if (list && button) {
+                            list.style.display = 'none';
+                            button.textContent = 'Show';
+                        }
+                    } else {
+                        console.error('Failed to load favorites:', data.error);
+                        favoriteNodes = [];
+                        updateFavoritesDisplay();
+                    }
+                })
+                .catch(err => {
+                    console.error('Error loading favorites:', err);
+                    favoriteNodes = [];
+                    updateFavoritesDisplay();
+                });
         }
 
         function toggleFavorite(hash, name) {
@@ -2173,6 +2210,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             });
             
             list.innerHTML = html;
+            // Don't change visibility here - let toggleFavoritesSection handle that
         }
 
         function toggleFavoritesSection() {

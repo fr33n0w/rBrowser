@@ -16,6 +16,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+import json
 
 import RNS
 from flask import jsonify, render_template, request, send_file, send_from_directory
@@ -390,6 +391,35 @@ def register_routes(app, browser) -> None:
         else:
             print(f"API Response: Ping failed - {response.get('error', 'Unknown error')}")
         return jsonify(response)
+    
+    @app.route('/api/favorites', methods=['GET'])
+    def get_favorites():
+        try:
+            favorites_file = 'settings/favorites.json'
+            if os.path.exists(favorites_file):
+                with open(favorites_file, 'r') as f:
+                    favorites = json.load(f)
+                return jsonify({'status': 'success', 'favorites': favorites})
+            else:
+                return jsonify({'status': 'success', 'favorites': []})
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)})
+
+    @app.route('/api/favorites', methods=['POST'])
+    def save_favorites():
+        try:
+            favorites = request.json.get('favorites', [])
+            favorites_file = 'settings/favorites.json'
+            
+            # Create settings directory if it doesn't exist
+            os.makedirs('settings', exist_ok=True)
+            
+            with open(favorites_file, 'w') as f:
+                json.dump(favorites, f, indent=2)
+            
+            return jsonify({'status': 'success', 'message': 'Favorites saved'})
+        except Exception as e:
+            return jsonify({'status': 'error', 'error': str(e)})
 
 
 # ---------------------------------------------------------------------- #
