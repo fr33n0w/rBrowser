@@ -267,7 +267,7 @@ You can run rBrowser directly on Android by using [Termux](https://termux.dev/),
 
 > **Tip:** For quicker restarts, create a small shell script in Termux (e.g., `~/start-rbrowser.sh`) that activates a virtual environment, runs rBrowser, and acquires the wake lock before launching.
 
-> **Please note:** The current UI is not optimized for Android devices. Support will come soon.
+> **Please note:** The current UI is not fully optimized for small screen mobile devices, improvements will come soon.
 
 ### Termux Troubleshooting
 
