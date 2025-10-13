@@ -85,6 +85,7 @@
             <button class="go-btn" onclick="navigateToUrl()" title="Navigate to current url page"><img src="/templates/go.png" alt="" style="width: 19px; height: 19px; vertical-align: middle;"></button>
                 <button class="search-btn" onclick="openSearchFromNav()" title="Open Search Engine Window"><img src="/templates/search.png" alt="" style="width: 19px; height: 19px; vertical-align: middle;"></button>
             <button class="star-btn" onclick="addCurrentPageToFavorites()" title="Add current page to favorites"><img src="/templates/star.png" alt="" style="width: 21px; height: 21px; vertical-align: middle;"></button>
+            <button class="info-btn-nav" onclick="showCurrentNodeInfo()" title="Show current node info"><img src="/templates/info.png" alt="Info" style="width: 20px; height: 20px; vertical-align: middle;"></button>
             <button class="ping-btn" onclick="pingCurrentNode()" title="Ping current node">
                 <img src="/templates/ping.png" alt="Ping" title="Ping remote Node" style="width: 20px; height: 20px; vertical-align: middle;">                
             </button>
@@ -734,6 +735,41 @@ function showNotification(message, type = 'info', duration = 4000, stackPosition
     }, duration);
     
     return notification;
+}
+
+function showCurrentNodeInfo() {
+    const tab = getActiveTab();
+    if (!tab || !tab.selectedNode) {
+        showNotification(
+            'No current node selected',
+            'warning',
+            4000
+        );
+        return;
+    }
+
+    const nodeHash = tab.selectedNode;
+    const nodeName = tab.knownNodeName || getNodeName(nodeHash);
+    
+    // Get node data from cached nodes
+    const nodeData = cachedNodes.find(n => n.hash === nodeHash);
+    
+    if (nodeData) {
+        showNodeInfo(
+            nodeData.hash, 
+            nodeData.name, 
+            nodeData.last_seen, 
+            nodeData.app_data_length, 
+            nodeData.announce_count, 
+            nodeData.last_seen_relative
+        );
+    } else {
+        showNotification(
+            `Node ${nodeName} info not available`,
+            'warning',
+            4000
+        );
+    }
 }
 
 function showConfirmDialog(message, onConfirm, onCancel = null) {
@@ -3742,7 +3778,7 @@ function detectContentType(content) {
                         alert.id = 'orientation-alert';
                         alert.style.cssText = `
                             position: fixed;
-                            top: 0;
+                            bottom: 0;
                             left: 0;
                             right: 0;
                             background: #fb8500;

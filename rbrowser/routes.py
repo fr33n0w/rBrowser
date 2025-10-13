@@ -396,6 +396,11 @@ def register_routes(app, browser) -> None:
     @app.route("/templates/fingerprint.png")
     def serve_fingerprint_icon():
         return _serve_template_asset("fingerprint.png")
+    
+    @app.route('/templates/<path:filename>')
+    def serve_template_file(filename):
+        """Serve static files from templates directory (icons, images, etc.)"""
+        return send_from_directory('templates', filename)
 
     @app.route("/api/cache-settings", methods=["GET", "POST"])
     def api_cache_settings():

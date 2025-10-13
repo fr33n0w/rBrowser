@@ -945,7 +945,8 @@ html, body {
     .search-btn,
     .star-btn, 
     .ping-btn,
-    .fingerprint-btn {
+    .fingerprint-btn,
+    .info-btn-nav {
         min-height: 44px !important;
         max-height: 44px !important;
         min-width: 44px !important;
@@ -962,7 +963,8 @@ html, body {
     .search-btn img,
     .star-btn img,
     .ping-btn img,
-    .fingerprint-btn img {
+    .fingerprint-btn img,
+    .info-btn-nav img {
         width: 20px !important;
         height: 20px !important;
         object-fit: contain !important;
@@ -1235,4 +1237,30 @@ mark {
     padding: 2px 4px;
     border-radius: 2px;
     font-weight: 600;
+}
+
+.info-btn-nav { 
+    background: #30363d; 
+    border: 1px solid #30363d; 
+    color: #58a6ff; 
+    padding: 6px 11px; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-size: 15px; 
+    font-weight: 600; 
+    transition: all 0.30s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.info-btn-nav:hover { 
+    background: #1ec735; 
+    border-color: #58a6ff; 
+}
+
+.info-btn-nav:disabled { 
+    background: #6e7681; 
+    cursor: not-allowed; 
+    opacity: 0.6; 
 }
