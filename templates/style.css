@@ -1264,3 +1264,11 @@ mark {
     cursor: not-allowed; 
     opacity: 0.6; 
 }
+
+@media (hover: none) and (pointer: coarse) {
+    /* Hide New Tab and Search Engine buttons on mobile */
+    .new-tab-btn,
+    .search-tab-btn {
+        display: none !important;
+    }
+}

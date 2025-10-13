@@ -3834,22 +3834,52 @@ function detectContentType(content) {
 // mobile devices support
 let touchStartX = 0;
 let touchEndX = 0;
+let touchStartY = 0;
+let touchEndY = 0;
+let touchStartTime = 0;
 
 document.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
+    // Only track swipes that start from the edge of the screen or tab bar
+    const touch = e.changedTouches[0];
+    const isFromEdge = touch.clientX < 50 || touch.clientX > window.innerWidth - 50;
+    const isFromTabBar = touch.target.closest('.tab-bar') !== null;
+    
+    if (isFromEdge || isFromTabBar) {
+        touchStartX = touch.screenX;
+        touchStartY = touch.screenY;
+        touchStartTime = Date.now();
+    } else {
+        touchStartX = 0;
+        touchStartY = 0;
+    }
 });
 
 document.addEventListener('touchend', e => {
+    if (touchStartX === 0) return; // Ignore if not started from edge/tab bar
+    
     touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
     handleSwipe();
 });
 
 function handleSwipe() {
-    const swipeThreshold = 50;
-    const diff = touchStartX - touchEndX;
+    const swipeThreshold = 80; // Increased from 50
+    const maxSwipeTime = 300; // Maximum time for a swipe gesture (ms)
+    const maxVerticalMovement = 50; // Maximum vertical movement to still count as horizontal swipe
     
-    if (Math.abs(diff) > swipeThreshold) {
-        if (diff > 0) {
+    const horizontalDiff = touchStartX - touchEndX;
+    const verticalDiff = Math.abs(touchStartY - touchEndY);
+    const swipeTime = Date.now() - touchStartTime;
+    
+    // Only trigger if:
+    // 1. Horizontal movement is above threshold
+    // 2. Vertical movement is minimal (not scrolling)
+    // 3. Swipe was fast enough
+    if (Math.abs(horizontalDiff) > swipeThreshold && 
+        verticalDiff < maxVerticalMovement && 
+        swipeTime < maxSwipeTime) {
+        
+        if (horizontalDiff > 0) {
             // Swipe left - next tab
             switchToNextTab();
         } else {
@@ -3857,6 +3887,10 @@ function handleSwipe() {
             switchToPreviousTab();
         }
     }
+    
+    // Reset
+    touchStartX = 0;
+    touchStartY = 0;
 }
 
     </script>
