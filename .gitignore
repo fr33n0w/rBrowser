@@ -1,3 +1,4 @@
 nomadnet_browser_identity
 cache/
 __pycache__/
+settings/favorites.json

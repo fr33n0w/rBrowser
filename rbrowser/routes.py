@@ -17,9 +17,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 import json
-
 import RNS
-from flask import jsonify, render_template, request, send_file, send_from_directory
+from flask import jsonify, render_template, request, send_file, send_from_directory , Response, stream_with_context
+import time
 
 
 def register_routes(app, browser) -> None:
@@ -95,39 +95,66 @@ def register_routes(app, browser) -> None:
     @app.route("/api/download/<node_hash>")
     def api_download_file(node_hash):
         file_path = request.args.get("path", "/file/")
-
         if not file_path.startswith("/file/"):
             return jsonify({"error": "Invalid file path"}), 400
-
+        
         print(f"📁 Download Request: {file_path} from {node_hash[:16]}...")
-
         response = browser.fetch_file(node_hash, file_path)
+        
         if response["status"] == "error":
             print(f"❌ Download failed: {response.get('error', 'Unknown error')}")
             return jsonify(response), 404
-
+        
         file_data = response["content"]
         filename = file_path.split("/")[-1] or "download"
-
+        
         if not isinstance(file_data, bytes):
             print(f"⚠️ File data is not bytes, it's {type(file_data)}")
             if isinstance(file_data, str):
                 file_data = file_data.encode("latin1")
             else:
                 file_data = str(file_data).encode("latin1")
-
+        
         if not file_data:
             print("❌ No file data received")
             return jsonify({"error": "No file data received"}), 404
-
+        
         mime_type, _ = mimetypes.guess_type(filename)
         if not mime_type:
             mime_type = "application/octet-stream"
-
+        
         print(f"✅ Serving file: {filename} ({len(file_data)} bytes, {mime_type})")
-
-        file_obj = io.BytesIO(file_data)
-        return send_file(file_obj, mimetype=mime_type, as_attachment=True, download_name=filename)
+        
+        # Get throttle setting from environment variable
+        throttle_ms = int(os.environ.get('DOWNLOAD_THROTTLE_MS', '0'))
+        
+        chunk_size = 4096  # 4KB chunks
+        
+        # CRITICAL: Use stream_with_context to force immediate flushing
+        def generate_chunks():
+            for i in range(0, len(file_data), chunk_size):
+                chunk = file_data[i:i + chunk_size]
+                yield chunk
+                
+                # Optional throttling for demo
+                if throttle_ms > 0:
+                    import time
+                    time.sleep(throttle_ms / 1000.0)
+        
+        # Wrap generator with stream_with_context
+        flask_response = Response(
+            stream_with_context(generate_chunks()),
+            mimetype=mime_type,
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"',
+                'Content-Length': str(len(file_data)),
+                'Cache-Control': 'no-cache',
+                'X-Content-Type-Options': 'nosniff',
+                'X-Accel-Buffering': 'no',  # Disable nginx buffering if behind proxy
+            }
+        )
+        
+        return flask_response
 
     @app.route("/favicon.svg")
     def favicon():

@@ -639,8 +639,15 @@ async function navigateToUrlInternalTab(url, addHistory = true) {
     } catch (error) {
         console.warn('Failed to refresh cached nodes:', error);
     }
+
+    if (parsed.formData && Object.keys(parsed.formData).length > 0) {
+        console.log('URL contains parameters, using POST method:', parsed.formData);
+        fetchPageByUrlTabWithFormData(parsed.hash, parsed.path, url, parsed.formData, false); // false = URL params (var_)
+    } else {
+        console.log('No parameters, using GET method');
+        fetchPageByUrlTab(parsed.hash, parsed.path, url);
+    }
     
-    fetchPageByUrlTab(parsed.hash, parsed.path, url);
     updateStarButtonState();
 }
 
@@ -805,10 +812,36 @@ function addClickHandlersToCurrentTab() {
         
         console.log('Link clicked, href:', href, 'destination:', destination, 'fields:', fields);
         
+        // Check if this is a link with fields specification
         if (fields && destination) {
-            console.log('Detected form submission link');
-            handleFormSubmit(destination, fields);
-            return;
+            console.log('Detected link with fields specification');
+            
+            // Parse the fields to determine if it's a form submission or URL parameters
+            const fieldsList = fields.split('|').filter(f => f.trim());
+            
+            // Check if any field references form inputs:
+            // - Contains "*" (wildcard for all form fields)
+            // - Contains field names without "=" (references to form inputs)
+            const hasFormFieldReferences = fieldsList.some(field => {
+                const trimmed = field.trim();
+                return trimmed === '*' || (!trimmed.includes('=') && trimmed.length > 0);
+            });
+            
+            if (hasFormFieldReferences) {
+                // This is a form submission - references actual form fields
+                console.log('Link references form fields, treating as form submission');
+                handleFormSubmit(destination, fields);
+                return;
+            } else {
+                // Only static parameters (like "var=value"), treat as URL navigation
+                console.log('Link has only static parameters, constructing URL');
+                let urlWithParams = destination;
+                if (fields) {
+                    urlWithParams += '`' + fields.replace(/\|/g, '|');
+                }
+                navigateToLinkTab(urlWithParams);
+                return;
+            }
         }
 
         if ((destination && destination.includes(':/file/')) || (href && href.includes(':/file/'))) {
@@ -828,7 +861,6 @@ function addClickHandlersToCurrentTab() {
         
         // Handle other link types with notifications
         if (destination && destination.includes('lxmf@')) {
-            // Extract the LXMF address
             const lxmfAddress = destination.match(/lxmf@[a-fA-F0-9]+/)?.[0] || destination;
             
             showNotification(
@@ -896,6 +928,7 @@ function addClickHandlersToCurrentTab() {
             navigateToLinkTab(urlToNavigate);
         }
     }
+    
     links.forEach(link => {
         link.addEventListener('click', handleClick);
     });
@@ -953,6 +986,7 @@ function navigateToLinkTab(url, addHistory = true) {
         );
         return;
     }
+    
     let parsed = parseNomadNetUrl(url);
     if (!parsed) {
         if (url.startsWith(':')) {
@@ -973,27 +1007,25 @@ function navigateToLinkTab(url, addHistory = true) {
             url = fullUrl; 
         }
     }
+    
     if (!parsed) {
         console.error('Failed to parse URL after all attempts:', url);
         return;
     }
+    
     if (addHistory) {
         tab.addToHistory(url);
     }
+    
     console.log('Final parsed result:', parsed);
     console.log('Final URL being used:', url);
    
     tab.setUrl(url);
     
+    // Check if we have form data - these are URL parameters, NOT form submissions
     if (parsed.formData && Object.keys(parsed.formData).length > 0) {
-        console.log('URL contains form data, submitting:', parsed.formData);
-        console.log('About to call submitFormData with:', {
-            nodeHash: parsed.hash,
-            path: parsed.path,
-            data: parsed.formData
-        });
-        
-        submitFormData(parsed.hash, parsed.path, parsed.formData);
+        console.log('URL contains parameters (from link), submitting with var_ prefix:', parsed.formData);
+        fetchPageByUrlTabWithFormData(parsed.hash, parsed.path, url, parsed.formData, false); // false = URL params
     } else {
         fetchPageByUrlTab(parsed.hash, parsed.path, url);
     }
@@ -1469,11 +1501,26 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             
             console.log('Current node hash:', currentParsed.hash);
             
-            let cleanPath = path;
-            let pathBacktickData = {};
+            // Parse the path to check if it already contains a hash
+            let fullPath = path;
+            let targetHash = currentParsed.hash;
             
-            if (path.includes('`')) {
-                const [pathPart, paramsPart] = path.split('`', 2);
+            const hashMatch = path.match(/^([a-fA-F0-9]{32}):(.*)/);
+            if (hashMatch) {
+                targetHash = hashMatch[1];
+                fullPath = hashMatch[2];
+                console.log('Path already contains hash:', targetHash);
+            } else if (path.startsWith(':')) {
+                fullPath = path.substring(1);
+            } else if (!path.startsWith('/')) {
+                fullPath = '/' + path;
+            }
+            
+            let cleanPath = fullPath;
+            let urlStaticParams = {};
+            
+            if (fullPath.includes('`')) {
+                const [pathPart, paramsPart] = fullPath.split('`', 2);
                 cleanPath = pathPart;
                 
                 if (paramsPart) {
@@ -1481,48 +1528,75 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     params.forEach(param => {
                         if (param.includes('=')) {
                             const [key, value] = param.split('=', 2);
-                            pathBacktickData[key.trim()] = value.trim();
+                            urlStaticParams[key.trim()] = value.trim();
                         }
                     });
                 }
             }
             
-            console.log('Path backtick data:', pathBacktickData);
+            console.log('URL static params from path:', urlStaticParams);
             console.log('Clean path:', cleanPath);
+            console.log('Target hash:', targetHash);
             
+            // Collect form data from inputs
             const formData = {};
             const inputs = document.querySelectorAll(`#${tab.id} .page-content input[name], #${tab.id} .page-content textarea[name]`);
             
             inputs.forEach(input => {
                 if (input.type === 'radio' && !input.checked) return;
-                if (input.type === 'checkbox' && !input.checked) return;
-                formData[input.name] = input.value;
+                if (input.type === 'checkbox') {
+                    formData[input.name] = input.checked ? (input.value || '1') : '0';
+                } else {
+                    formData[input.name] = input.value;
+                }
             });
             
-            console.log('Collected form data:', formData);
+            console.log('Collected form data from inputs:', formData);
             
+            // Process fieldsSpec
             const fields = fieldsSpec.split('|').filter(f => f.trim());
-            let submitData = { ...pathBacktickData }; 
+            let submitData = {};
+            const metadata = {}; // Track which params are static vs form fields
+            
+            // Add URL static params with metadata
+            for (const [key, value] of Object.entries(urlStaticParams)) {
+                submitData[key] = value;
+                metadata[key] = 'static';
+            }
             
             fields.forEach(field => {
                 const trimmedField = field.trim();
                 
                 if (trimmedField.includes('=')) {
+                    // Static assignment
                     const [key, value] = trimmedField.split('=', 2);
-                    submitData[key.trim()] = value.trim();
+                    const k = key.trim();
+                    submitData[k] = value.trim();
+                    metadata[k] = 'static';
                 } else if (trimmedField === '*') {
-                    submitData = { ...submitData, ...formData };
+                    // Include all form fields
+                    for (const [key, value] of Object.entries(formData)) {
+                        submitData[key] = value;
+                        metadata[key] = 'field';
+                    }
                 } else if (formData.hasOwnProperty(trimmedField)) {
+                    // Include specific form field
                     submitData[trimmedField] = formData[trimmedField];
+                    metadata[trimmedField] = 'field';
                 } else {
                     console.warn(`Field '${trimmedField}' referenced but not found in form. Sending empty value.`);
                     submitData[trimmedField] = '';
+                    metadata[trimmedField] = 'field';
                 }
             });
             
-            console.log('Final merged submit data:', submitData);
+            // Add metadata to submitData
+            submitData._meta = metadata;
             
-            submitFormData(currentParsed.hash, cleanPath, submitData);
+            console.log('Final merged submit data:', submitData);
+            console.log('Metadata:', metadata);
+            
+            submitFormData(targetHash, cleanPath, submitData);
         }
 
         function submitFormData(nodeHash, path, data) {
@@ -1538,7 +1612,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             console.log('Final URL to navigate to:', fullUrl);
             console.log('Form data to submit:', data);
             
-            navigateToUrlInternalTabWithFormData(fullUrl, data, true);
+            navigateToUrlInternalTabWithFormData(fullUrl, data, true); // true = form submission (field_)
         }
 
         function navigateToUrlInternalTabWithFormData(url, formData, addHistory = true) {
@@ -1561,7 +1635,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
 
             tab.setUrl(url);
             
-            fetchPageByUrlTabWithFormData(parsed.hash, parsed.path, url, formData);
+            fetchPageByUrlTabWithFormData(parsed.hash, parsed.path, url, formData, true); // true = form submission
         }
 
         function addClickHandlersToLinks(html) {
@@ -1602,38 +1676,73 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
 
         function parseNomadNetUrl(url) {
             console.log('Parsing URL:', url);
-        
+
+            // Remove nomadnetwork:// prefix if present
             url = url.replace(/^nomadnetwork:\/\//, '');
-        
+
+            // Match hash and everything after the colon/slash
             const match = url.match(/^([a-fA-F0-9<>:]{32,})(?:[:\/](.*))?$/);
             if (match) {
                 const cleanHash = match[1].replace(/[<>:]/g, '');
-                let path = match[2];
-            
-                if (!path || path === '') {
-                    path = 'page/index.mu';
+                let fullPath = match[2];
+
+                if (!fullPath || fullPath === '') {
+                    fullPath = 'page/index.mu';
                 }
 
+                let path = fullPath;
                 let formData = {};
-                if (path.includes('`')) {
-                    const [pathPart, varsPart] = path.split('`', 2);
-                    path = pathPart;
+
+                // Check if there are backtick parameters
+                if (fullPath.includes('`')) {
+                    // Find the LAST occurrence of .mu to split path from parameters
+                    const muIndex = fullPath.lastIndexOf('.mu');
                     
-                    if (varsPart) {
-                        const vars = varsPart.split('|');
-                        for (const varPair of vars) {
-                            if (varPair.includes('=')) {
-                                const [key, value] = varPair.split('=', 2);
-                                formData[key] = value;
+                    if (muIndex !== -1) {
+                        // Check if there's a backtick after .mu
+                        const afterMu = fullPath.substring(muIndex + 3); // +3 for ".mu"
+                        
+                        if (afterMu.startsWith('`')) {
+                            // Split at this point
+                            path = fullPath.substring(0, muIndex + 3); // Include .mu
+                            const varsPart = afterMu.substring(1); // Remove leading backtick
+                            
+                            if (varsPart) {
+                                // Split by pipe to get individual parameters
+                                const vars = varsPart.split('|');
+                                for (const varPair of vars) {
+                                    if (varPair.includes('=')) {
+                                        const [key, value] = varPair.split('=', 2);
+                                        formData[key.trim()] = value.trim();
+                                    }
+                                }
+                            }
+                        } else {
+                            // No backtick after .mu, treat entire thing as path
+                            path = fullPath;
+                        }
+                    } else {
+                        // No .mu found, use original splitting logic
+                        const [pathPart, varsPart] = fullPath.split('`', 2);
+                        path = pathPart;
+                        
+                        if (varsPart) {
+                            const vars = varsPart.split('|');
+                            for (const varPair of vars) {
+                                if (varPair.includes('=')) {
+                                    const [key, value] = varPair.split('=', 2);
+                                    formData[key] = value;
+                                }
                             }
                         }
                     }
                 }
-            
+
+                // Ensure path starts with /
                 if (!path.startsWith('/')) {
                     path = '/' + path;
                 }
-            
+
                 console.log('Parsed URL - Hash:', cleanHash.substring(0, 16) + '...', 'Path:', path);
                 if (Object.keys(formData).length > 0) {
                     console.log('Form data from URL:', formData);
@@ -1641,7 +1750,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                 
                 return { hash: cleanHash, path: path, formData: formData };
             }
-        
+
             console.log('Failed to parse URL:', url);
             return null;
         }
@@ -1903,59 +2012,57 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             <div style="margin: 8px 0; background: #333; height: 6px; border-radius: 3px; overflow: hidden;">
                 <div id="progress-bar" style="background: #58a6ff; height: 100%; width: 0%; transition: width 0.3s;"></div>
             </div>
-            <div id="progress-text" style="font-size: 12px; color: #7d8590;">Download in progress, please wait...</div>
+            <div id="progress-text" style="font-size: 12px; color: #7d8590;">Starting download...</div>
+            <div id="debug-text" style="font-size: 10px; color: #7d8590; margin-top: 4px;"></div>
         `;
         
         document.body.appendChild(notification);
         
         const progressBar = notification.querySelector('#progress-bar');
         const progressText = notification.querySelector('#progress-text');
+        const debugText = notification.querySelector('#debug-text');
         
-        fetch(downloadUrl)
-            .then(response => {
-                if (!response.ok) throw new Error('Download failed');
-                
-                const contentLength = response.headers.get('Content-Length');
-                const total = parseInt(contentLength, 10);
-                let loaded = 0;
-
-                if (!total) {
-                    progressText.textContent = 'Downloading... (size unknown)';
-                    return response.blob();
-                }
-                
-                const reader = response.body.getReader();
-                const stream = new ReadableStream({
-                    start(controller) {
-                        function pump() {
-                            return reader.read().then(({ done, value }) => {
-                                if (done) {
-                                    controller.close();
-                                    return;
-                                }
-                                
-                                loaded += value.byteLength;
-                                const progress = (loaded / total * 100).toFixed(1);
-
-                                progressBar.style.width = progress + '%';
-                                progressText.textContent = `${progress}% (${formatFileSize(loaded)} / ${formatFileSize(total)})`;
-                                
-                                controller.enqueue(value);
-                                return pump();
-                            });
-                        }
-                        return pump();
-                    }
-                });
-                
-                return new Response(stream).blob();
-            })
-            .then(blob => {
+        // Use XMLHttpRequest for better progress tracking
+        const xhr = new XMLHttpRequest();
+        
+        xhr.open('GET', downloadUrl, true);
+        xhr.responseType = 'blob';
+        
+        let progressEventCount = 0;
+        
+        // Track download progress
+        xhr.onprogress = function(event) {
+            progressEventCount++;
+            
+            console.log('Progress event #' + progressEventCount, {
+                lengthComputable: event.lengthComputable,
+                loaded: event.loaded,
+                total: event.total,
+                timestamp: new Date().toISOString()
+            });
+            
+            debugText.textContent = `Progress events: ${progressEventCount}, Computable: ${event.lengthComputable}`;
+            
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                progressBar.style.width = percentComplete + '%';
+                progressText.textContent = `${percentComplete.toFixed(1)}% (${formatFileSize(event.loaded)} / ${formatFileSize(event.total)})`;
+            } else {
+                // If size is unknown, show indeterminate progress
+                progressText.textContent = `Downloading... (${formatFileSize(event.loaded)} received)`;
+            }
+        };
+        
+        xhr.onload = function() {
+            console.log('Download complete, progress events:', progressEventCount);
+            
+            if (xhr.status === 200) {
                 notification.style.borderColor = '#1a1a1a';
                 progressBar.style.background = '#7c3aed';
                 progressText.textContent = 'Download completed!';
                 notification.querySelector('div').innerHTML = `✅ Downloaded ${filename}`;
                 
+                const blob = xhr.response;
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
@@ -1971,19 +2078,35 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                         notification.parentNode.removeChild(notification);
                     }
                 }, 3000);
-            })
-            .catch(error => {
+            } else {
                 notification.style.borderColor = '#1a1a1a';
                 progressBar.style.background = '#ff7b72';
                 progressText.textContent = 'Download failed!';
-                notification.querySelector('div').innerHTML = `❌ Download failed<br><small>${error.message}</small>`;
+                notification.querySelector('div').innerHTML = `❌ Download failed<br><small>HTTP ${xhr.status}</small>`;
                 
                 setTimeout(() => {
                     if (notification.parentNode) {
                         notification.parentNode.removeChild(notification);
                     }
                 }, 5000);
-            });
+            }
+        };
+        
+        xhr.onerror = function() {
+            console.log('Download error, progress events:', progressEventCount);
+            notification.style.borderColor = '#1a1a1a';
+            progressBar.style.background = '#ff7b72';
+            progressText.textContent = 'Download failed!';
+            notification.querySelector('div').innerHTML = `❌ Network error`;
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+        };
+        
+        xhr.send();
     }
 
     function formatFileSize(bytes) {
@@ -2240,40 +2363,213 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             }
         }
 
-        function fetchPageByUrlTabWithFormData(hash, path, originalUrl, formData) {
+        function fetchPageByUrlTabWithFormData(hash, path, originalUrl, formData, isFormSubmission = false) {
             const tab = getActiveTab();
             if (!tab) return;
             
-            tab.setLoading(true);
-            const nodeName = tab.knownNodeName || getNodeName(hash);
-
-            const pageContent = document.querySelector(`#${tab.id} .page-content`);
-            if (pageContent) {
-                pageContent.innerHTML = `<div style="color: #58a6ff; text-align: center; padding: 40px;">Submitting form...<br><br><strong>${nodeName}</strong></div>`;
+            if (tab.currentRequest) {
+                tab.currentRequest.abort();
+                tab.currentRequest = null;
             }
+            
+            tab.selectedNode = hash;
+            tab.setLoading(true);
+
+            const nodeName = getNodeName(hash);
+            tab.knownNodeName = nodeName;
+            
+            const pageTitle = document.querySelector(`#${tab.id} .page-title`);
+            const pageContent = document.querySelector(`#${tab.id} .page-content`);
+            const viewToggle = document.querySelector(`#${tab.id} .view-toggle`);
+            const addressBar = document.querySelector(`#${tab.id} .address-bar`);
+            
+            if (pageTitle) {
+                pageTitle.innerHTML = `<span class="label">Loading:</span> <span class="value">${nodeName}</span>`;
+            }
+            const pageDetails = document.querySelector(`#${tab.id} .page-details`);
+            if (pageDetails) {
+                pageDetails.innerHTML = `<span class="label">Page Path:</span> <span class="value">${path}</span> <span class="label">Full Address:</span> <span class="value">${originalUrl}</span>`;
+            }
+            if (pageContent) {
+                pageContent.innerHTML = `<div style="color: #58a6ff; text-align: center; padding: 40px; font-size: 16px;">
+                    Loading page with parameters...<br><br>
+                    <strong>${nodeName}</strong><br><br>
+                    Sending ${Object.keys(formData).length} parameter(s)
+                </div>`;
+            }
+            if (viewToggle) viewToggle.style.display = 'none';
+            if (addressBar) addressBar.value = originalUrl;
+            
+            if (tab.id === activeTabId) {
+                tab.setTitle(`Loading ${nodeName}...`);
+            } else {
+                tab.title = `Loading ${nodeName}...`;
+            }
+            
+            document.querySelectorAll('.node-item').forEach(item => item.classList.remove('selected'));
+            const nodeItem = document.querySelector(`[data-hash="${hash}"]`);
+            if (nodeItem) {
+                nodeItem.classList.add('selected');
+            }
+            
+            const controller = new AbortController();
+            tab.currentRequest = controller;
+
+            // Extract metadata BEFORE processing
+            const metadata = formData._meta || {};
+            
+            // PREFIX form data keys appropriately
+            const prefixedFormData = {};
+            
+            for (const [key, value] of Object.entries(formData)) {
+                // Skip the metadata object
+                if (key === '_meta') continue;
+                
+                // Check if key already has a prefix
+                if (key.startsWith('var_') || key.startsWith('field_')) {
+                    prefixedFormData[key] = value;
+                } else {
+                    // Check metadata to determine type
+                    if (metadata[key]) {
+                        const type = metadata[key];
+                        const prefix = type === 'static' ? 'var_' : 'field_';
+                        prefixedFormData[prefix + key] = value;
+                    } else {
+                        // Default: if isFormSubmission, use field_, otherwise var_
+                        const prefix = isFormSubmission ? 'field_' : 'var_';
+                        prefixedFormData[prefix + key] = value;
+                    }
+                }
+            }
+
+            console.log('🚀 Original form data:', formData);
+            console.log('🔄 Prefixed form data:', prefixedFormData);
+            console.log('📝 Is form submission:', isFormSubmission);
+            console.log('📍 URL:', `/api/fetch/${hash}?path=${encodeURIComponent(path)}`);
 
             fetch(`/api/fetch/${hash}?path=${encodeURIComponent(path)}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(prefixedFormData),
+                signal: controller.signal
             })
-            .then(r => r.json())
+            .then(r => {
+                console.log('📥 Response status:', r.status);
+                return r.json();
+            })
             .then(response => {
-                if (response.status === 'success') {
-                    tab.currentRawContent = response.content;
-                    const renderedHtml = parseMicronContent(response.content);
-                    if (pageContent) pageContent.innerHTML = renderedHtml;
-                    addClickHandlersToCurrentTab();
-                } else {
-                    if (pageContent) pageContent.innerHTML = `<div class="error">Form submission failed: ${response.error}</div>`;
+                console.log('📦 Response received:', response.status);
+                
+                if (tab.currentRequest === controller) {
+                    if (response.status === 'success') {
+                        console.log('✅ Page loaded successfully');
+                        tab.currentRawContent = response.content;
+                        tab.isRawView = false;
+                        
+                        const renderedHtml = parseMicronContent(response.content);
+                        if (pageContent) pageContent.innerHTML = renderedHtml;
+                        if (pageContent) pageContent.className = 'page-content';
+                        
+                        if (pageTitle) {
+                            pageTitle.innerHTML = `<span class="node-name">${nodeName}</span>`;
+                        }
+                        const pageDetails = document.querySelector(`#${tab.id} .page-details`);
+                        if (pageDetails) {
+                            pageDetails.innerHTML = `<span class="path-info">${path}</span> <span class="label">- Address:</span> <span class="address-info">${originalUrl}</span>`;
+                        }
+                        
+                        if (viewToggle) {
+                            viewToggle.style.display = 'block';
+                            viewToggle.textContent = 'Raw View';
+                        }
+
+                        const asciiControl = document.querySelector(`#${tab.id} .ascii-control`);
+                        if (asciiControl) {
+                            asciiControl.style.display = 'flex';
+                        }
+
+                        const asciiSwitch = document.querySelector(`#${tab.id} .ascii-switch`);
+                        const asciiStatus = document.querySelector(`#${tab.id} .ascii-status`);
+                        if (asciiSwitch && asciiStatus) {
+                            asciiSwitch.checked = false;
+                            asciiStatus.textContent = 'Text Mode';
+                        }
+
+                        tab.asciiOptimized = false;
+
+                        const contentType = detectContentType(tab.currentRawContent);
+                        if (contentType === 'ascii') {
+                            asciiSwitch.checked = true;
+                            toggleAsciiOptimization();
+                            showNotification(
+                                '🎨 <strong>Page Mode Detected: ASCII Art</strong>',
+                                'success',
+                                3000
+                            );
+                        } else {
+                            showNotification(
+                                '📄 <strong>Page Mode Detected: TEXT</strong>',
+                                'success',
+                                3000
+                            );
+                        }
+
+                        if (tab.id === activeTabId) {
+                            tab.setTitle(nodeName);
+                        } else {
+                            tab.title = nodeName;
+                        }
+                        
+                        addClickHandlersToCurrentTab();
+                        
+                    } else {
+                        console.error('❌ Page load failed:', response.error);
+                        if (pageContent) {
+                            pageContent.innerHTML = `<div class="error">Failed to load page: ${escapeHtml(response.error)}<br><br>
+                                Parameters sent: ${Object.keys(prefixedFormData).length}<br>
+                                ${Object.entries(prefixedFormData).map(([k,v]) => `${k}=${v}`).join('<br>')}
+                            </div>`;
+                        }
+                        if (pageTitle) pageTitle.textContent = `Error loading ${originalUrl}`;
+                        if (viewToggle) viewToggle.style.display = 'none';
+                        
+                        const asciiToggle = document.querySelector(`#${tab.id} .ascii-toggle`);
+                        if (asciiToggle) {
+                            asciiToggle.style.display = 'none';
+                        }
+
+                        if (tab.id === activeTabId) {
+                            tab.setTitle('Error');
+                        } else {
+                            tab.title = 'Error';
+                        }
+                    }
+                    tab.currentRequest = null;
+                    tab.setLoading(false);
                 }
-                tab.setLoading(false);
             })
             .catch(err => {
-                if (pageContent) pageContent.innerHTML = `<div class="error">Network error: ${err.message}</div>`;
-                tab.setLoading(false);
+                console.error('❌ Network error:', err);
+                if (tab.currentRequest === controller && !controller.signal.aborted) {
+                    if (pageContent) {
+                        pageContent.innerHTML = `<div class="error">Network error: ${escapeHtml(err.message)}<br><br>
+                            Please check your connection and try again.<br><br>
+                            Parameters that were being sent: ${Object.keys(prefixedFormData).length}
+                        </div>`;
+                    }
+                    if (pageTitle) pageTitle.textContent = `Error loading ${originalUrl}`;
+                    if (viewToggle) viewToggle.style.display = 'none';
+                    tab.currentRequest = null;
+                    tab.setLoading(false);
+                    
+                    if (tab.id === activeTabId) {
+                        tab.setTitle('Network Error');
+                    } else {
+                        tab.title = 'Network Error';
+                    }
+                }
             });
         }
 

@@ -371,7 +371,7 @@ You can run rBrowser directly on Android by using [Termux](https://termux.dev/),
 
 ## ⚠️ Known Issues:
 
-- Input parameters sending could fail on pages with non-standard nomadnet micron link format, due to unique fields customization  (BTW >95% of pages are perfectly working!)
+- File download % progress showing only at the end of a download
 
 -----
 
