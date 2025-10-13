@@ -364,8 +364,8 @@ class NomadNetFileBrowser:
         self.response_event = threading.Event()
         self.file_path: str = ""
 
-    def fetch_file(self, file_path: str, timeout: float = 60) -> Dict[str, Any]:
-        """Fetch a binary file from the remote node."""
+    def fetch_file(self, file_path: str, timeout: float = 60, progress_callback=None) -> Dict[str, Any]:
+        """Fetch a binary file from the remote node with optional progress tracking."""
         try:
             pretty_hash = RNS.prettyhexrep(self.destination_hash)[:16]
             print(f"🔍 Checking path to {pretty_hash} for file...")
@@ -390,6 +390,7 @@ class NomadNetFileBrowser:
             self.result = RequestResult()
             self.response_event.clear()
             self.file_path = file_path
+            self.progress_callback = progress_callback  # Store the callback
 
             print(f"📁 Requesting file: {file_path}")
             self.link.set_link_established_callback(self._on_link_established)
@@ -406,12 +407,23 @@ class NomadNetFileBrowser:
 
     def _on_link_established(self, link: RNS.Link) -> None:
         try:
-            print(f"🔗 Link established, requesting file: {self.file_path}")
+            # Extract filename from path for cleaner logging
+            filename = self.file_path.split('/')[-1] or "file"
+            print(f"📁 Download of {filename} started")
+            
+            # Define progress handler
+            def on_progress(receipt):
+                if self.progress_callback:
+                    progress = receipt.progress  # 0.0 to 1.0
+                    self.progress_callback(progress)
+                    # Removed: print statement here
+            
             link.request(
                 self.file_path,
                 data=None,
                 response_callback=self._on_response,
                 failed_callback=self._on_request_failed,
+                progress_callback=on_progress,
             )
         except Exception as exc:
             print(f"❌ File request error: {exc}")
@@ -421,19 +433,24 @@ class NomadNetFileBrowser:
     def _on_response(self, receipt: RNS.RequestReceipt) -> None:
         try:
             data = receipt.response
-            print(f"📁 Received response type: {type(data)}")
-
+            
             if isinstance(data, bytes):
                 self.result.data = data
-                print(f"✅ Received file data: {len(data)} bytes")
+                filename = self.file_path.split('/')[-1] or "file"
+                print(f"✅ Download of {filename} completed ({len(data)} bytes)")
             elif isinstance(data, str):
                 encoded = data.encode("utf-8")
                 self.result.data = encoded
-                print(f"✅ Received text file: {len(data)} characters")
+                filename = self.file_path.split('/')[-1] or "file"
+                print(f"✅ Download of {filename} completed ({len(data)} characters)")
             elif isinstance(data, list):
                 self.result.data = self._handle_list_response(data)
+                filename = self.file_path.split('/')[-1] or "file"
+                print(f"✅ Download of {filename} completed ({len(self.result.data)} bytes)")
             elif hasattr(data, "read"):
                 self.result.data = self._read_file_object(data)
+                filename = self.file_path.split('/')[-1] or "file"
+                print(f"✅ Download of {filename} completed ({len(self.result.data)} bytes)")
             else:
                 print(f"❌ Unknown data type: {type(data)}")
                 self.result.data = b""
@@ -451,7 +468,7 @@ class NomadNetFileBrowser:
         try:
             if all(isinstance(item, bytes) for item in data):
                 combined = b"".join(data)
-                print(f"✅ Joined {len(data)} byte chunks: {len(combined)} total bytes")
+                # Removed: print statement
                 return combined
 
             binary_parts = []
@@ -460,11 +477,9 @@ class NomadNetFileBrowser:
                     binary_parts.append(item)
                 elif isinstance(item, str):
                     binary_parts.append(item.encode("latin1"))
-                else:
-                    print(f"⚠️ Unexpected item type: {type(item)}")
 
             combined = b"".join(binary_parts)
-            print(f"✅ Processed mixed list: {len(combined)} total bytes")
+            # Removed: print statement
             return combined
 
         except Exception as exc:
@@ -482,11 +497,11 @@ class NomadNetFileBrowser:
                 file_obj.close()
 
             if isinstance(content, bytes):
-                print(f"✅ Successfully read file: {len(content)} bytes")
+                # Removed: print statement
                 return content
 
             encoded = content.encode("latin1")
-            print(f"✅ Successfully read file (text -> bytes): {len(encoded)} bytes")
+            # Removed: print statement
             return encoded
 
         except Exception as exc:

@@ -20,7 +20,12 @@ import json
 import RNS
 from flask import jsonify, render_template, request, send_file, send_from_directory , Response, stream_with_context
 import time
+import uuid
+import threading
 
+# Global storage for download progress
+download_progress = {}
+download_results = {}
 
 def register_routes(app, browser) -> None:
     """Attach all routes to the provided Flask application."""
@@ -98,63 +103,140 @@ def register_routes(app, browser) -> None:
         if not file_path.startswith("/file/"):
             return jsonify({"error": "Invalid file path"}), 400
         
-        print(f"📁 Download Request: {file_path} from {node_hash[:16]}...")
-        response = browser.fetch_file(node_hash, file_path)
+        # Generate unique download ID
+        download_id = str(uuid.uuid4())
         
-        if response["status"] == "error":
-            print(f"❌ Download failed: {response.get('error', 'Unknown error')}")
-            return jsonify(response), 404
+        # Return download ID to client immediately
+        return jsonify({"download_id": download_id, "status": "started"})
         
-        file_data = response["content"]
-        filename = file_path.split("/")[-1] or "download"
+    @app.route("/api/download/<node_hash>/stream")
+    def api_download_file_stream(node_hash):
+        """Stream file download with Server-Sent Events for progress."""
+        file_path = request.args.get("path", "/file/")
+        download_id = request.args.get("download_id")
+        
+        if not file_path.startswith("/file/"):
+            return jsonify({"error": "Invalid file path"}), 400
+        
+        def generate():
+            # Track progress
+            download_progress[download_id] = {"progress": 0, "status": "downloading"}
+            
+            def progress_callback(progress):
+                download_progress[download_id]["progress"] = progress * 100
+                # Send progress update via SSE
+                yield f"data: {json.dumps({'progress': progress * 100, 'status': 'downloading'})}\n\n"
+            
+            # Download file with progress tracking
+            response = browser.fetch_file(node_hash, file_path, progress_callback)
+            
+            if response["status"] == "error":
+                yield f"data: {json.dumps({'error': response.get('error'), 'status': 'error'})}\n\n"
+                return
+            
+            file_data = response["content"]
+            filename = file_path.split("/")[-1] or "download"
+            
+            # Send completion with file data
+            import base64
+            file_b64 = base64.b64encode(file_data).decode('utf-8')
+            yield f"data: {json.dumps({'progress': 100, 'status': 'complete', 'filename': filename, 'file_data': file_b64})}\n\n"
+            
+            # Cleanup
+            if download_id in download_progress:
+                del download_progress[download_id]
+        
+        return Response(generate(), mimetype='text/event-stream')
+
+    @app.route("/api/download/<node_hash>/start")
+    def api_start_download(node_hash):
+        """Start a download and return a download ID."""
+        file_path = request.args.get("path", "/file/")
+        if not file_path.startswith("/file/"):
+            return jsonify({"error": "Invalid file path"}), 400
+        
+        # Generate unique download ID
+        download_id = str(uuid.uuid4())
+        download_progress[download_id] = {"progress": 0, "status": "starting"}
+        
+        # Removed the print statement here - it's now in nomadnet.py
+        
+        def do_download():
+            def progress_callback(progress):
+                download_progress[download_id] = {
+                    "progress": progress * 100,
+                    "status": "downloading"
+                }
+                # Removed: print statement here
+            
+            response = browser.fetch_file(node_hash, file_path, progress_callback)
+            
+            if response["status"] == "success":
+                download_results[download_id] = {
+                    "status": "complete",
+                    "content": response["content"],
+                    "filename": file_path.split("/")[-1] or "download"
+                }
+                download_progress[download_id] = {"progress": 100, "status": "complete"}
+            else:
+                download_results[download_id] = {
+                    "status": "error",
+                    "error": response.get("error", "Unknown error")
+                }
+                download_progress[download_id] = {"progress": 0, "status": "error"}
+        
+        # Start download in background thread
+        thread = threading.Thread(target=do_download)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({"download_id": download_id, "status": "started"})
+
+    @app.route("/api/download/progress/<download_id>")
+    def api_download_progress(download_id):
+        """Get current download progress."""
+        progress_data = download_progress.get(download_id, {"progress": 0, "status": "unknown"})
+        return jsonify(progress_data)
+
+    @app.route("/api/download/result/<download_id>")
+    def api_download_result(download_id):
+        """Get the downloaded file once complete."""
+        result = download_results.get(download_id)
+        
+        if not result:
+            return jsonify({"error": "Download not found"}), 404
+        
+        if result["status"] == "error":
+            return jsonify({"error": result.get("error", "Download failed")}), 500
+        
+        file_data = result["content"]
+        filename = result["filename"]
+        
+        # Cleanup
+        if download_id in download_progress:
+            del download_progress[download_id]
+        if download_id in download_results:
+            del download_results[download_id]
         
         if not isinstance(file_data, bytes):
-            print(f"⚠️ File data is not bytes, it's {type(file_data)}")
             if isinstance(file_data, str):
                 file_data = file_data.encode("latin1")
             else:
                 file_data = str(file_data).encode("latin1")
         
-        if not file_data:
-            print("❌ No file data received")
-            return jsonify({"error": "No file data received"}), 404
-        
         mime_type, _ = mimetypes.guess_type(filename)
         if not mime_type:
             mime_type = "application/octet-stream"
         
-        print(f"✅ Serving file: {filename} ({len(file_data)} bytes, {mime_type})")
+        print(f"✅ Serving file: {filename} ({len(file_data)} bytes)")
         
-        # Get throttle setting from environment variable
-        throttle_ms = int(os.environ.get('DOWNLOAD_THROTTLE_MS', '0'))
-        
-        chunk_size = 4096  # 4KB chunks
-        
-        # CRITICAL: Use stream_with_context to force immediate flushing
-        def generate_chunks():
-            for i in range(0, len(file_data), chunk_size):
-                chunk = file_data[i:i + chunk_size]
-                yield chunk
-                
-                # Optional throttling for demo
-                if throttle_ms > 0:
-                    import time
-                    time.sleep(throttle_ms / 1000.0)
-        
-        # Wrap generator with stream_with_context
-        flask_response = Response(
-            stream_with_context(generate_chunks()),
+        file_obj = io.BytesIO(file_data)
+        return send_file(
+            file_obj,
             mimetype=mime_type,
-            headers={
-                'Content-Disposition': f'attachment; filename="{filename}"',
-                'Content-Length': str(len(file_data)),
-                'Cache-Control': 'no-cache',
-                'X-Content-Type-Options': 'nosniff',
-                'X-Accel-Buffering': 'no',  # Disable nginx buffering if behind proxy
-            }
+            as_attachment=True,
+            download_name=filename
         )
-        
-        return flask_response
 
     @app.route("/favicon.svg")
     def favicon():

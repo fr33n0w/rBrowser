@@ -255,12 +255,12 @@ class NomadNetWebBrowser:
     # Page & file access                                                 #
     # ------------------------------------------------------------------ #
 
-    def fetch_file(self, node_hash: str, file_path: str) -> Dict[str, Any]:
-        """Fetch a file from a NomadNet node."""
+    def fetch_file(self, node_hash: str, file_path: str, progress_callback=None) -> Dict[str, Any]:
+        """Fetch a file from a NomadNet node with optional progress tracking."""
         try:
             print(f"📁 NomadNetWebBrowser.fetch_file called: {file_path} from {node_hash[:16]}...")
             browser = NomadNetFileBrowser(self, node_hash)
-            return browser.fetch_file(file_path)
+            return browser.fetch_file(file_path, progress_callback=progress_callback)
         except Exception as exc:
             print(f"❌ File fetch failed: {exc}")
             return {"error": f"File fetch failed: {exc}", "content": b"", "status": "error"}

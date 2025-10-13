@@ -1995,7 +1995,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
         }
 
     function handleFileDownload(nodeHash, filePath) {
-        const downloadUrl = `/api/download/${nodeHash}?path=${encodeURIComponent(filePath)}`;
+        const startUrl = `/api/download/${nodeHash}/start?path=${encodeURIComponent(filePath)}`;
         const filename = filePath.split('/').pop();
         
         const notification = document.createElement('div');
@@ -2012,101 +2012,89 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
             <div style="margin: 8px 0; background: #333; height: 6px; border-radius: 3px; overflow: hidden;">
                 <div id="progress-bar" style="background: #58a6ff; height: 100%; width: 0%; transition: width 0.3s;"></div>
             </div>
-            <div id="progress-text" style="font-size: 12px; color: #7d8590;">Starting download...</div>
-            <div id="debug-text" style="font-size: 10px; color: #7d8590; margin-top: 4px;"></div>
+            <div id="progress-text" style="font-size: 12px; color: #7d8590;">Connecting to node...</div>
         `;
         
         document.body.appendChild(notification);
         
         const progressBar = notification.querySelector('#progress-bar');
         const progressText = notification.querySelector('#progress-text');
-        const debugText = notification.querySelector('#debug-text');
         
-        // Use XMLHttpRequest for better progress tracking
-        const xhr = new XMLHttpRequest();
-        
-        xhr.open('GET', downloadUrl, true);
-        xhr.responseType = 'blob';
-        
-        let progressEventCount = 0;
-        
-        // Track download progress
-        xhr.onprogress = function(event) {
-            progressEventCount++;
-            
-            console.log('Progress event #' + progressEventCount, {
-                lengthComputable: event.lengthComputable,
-                loaded: event.loaded,
-                total: event.total,
-                timestamp: new Date().toISOString()
-            });
-            
-            debugText.textContent = `Progress events: ${progressEventCount}, Computable: ${event.lengthComputable}`;
-            
-            if (event.lengthComputable) {
-                const percentComplete = (event.loaded / event.total) * 100;
-                progressBar.style.width = percentComplete + '%';
-                progressText.textContent = `${percentComplete.toFixed(1)}% (${formatFileSize(event.loaded)} / ${formatFileSize(event.total)})`;
-            } else {
-                // If size is unknown, show indeterminate progress
-                progressText.textContent = `Downloading... (${formatFileSize(event.loaded)} received)`;
-            }
-        };
-        
-        xhr.onload = function() {
-            console.log('Download complete, progress events:', progressEventCount);
-            
-            if (xhr.status === 200) {
-                notification.style.borderColor = '#1a1a1a';
-                progressBar.style.background = '#7c3aed';
-                progressText.textContent = 'Download completed!';
-                notification.querySelector('div').innerHTML = `✅ Downloaded ${filename}`;
-                
-                const blob = xhr.response;
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = filename;
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 3000);
-            } else {
-                notification.style.borderColor = '#1a1a1a';
-                progressBar.style.background = '#ff7b72';
-                progressText.textContent = 'Download failed!';
-                notification.querySelector('div').innerHTML = `❌ Download failed<br><small>HTTP ${xhr.status}</small>`;
-                
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 5000);
-            }
-        };
-        
-        xhr.onerror = function() {
-            console.log('Download error, progress events:', progressEventCount);
-            notification.style.borderColor = '#1a1a1a';
-            progressBar.style.background = '#ff7b72';
-            progressText.textContent = 'Download failed!';
-            notification.querySelector('div').innerHTML = `❌ Network error`;
-            
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
+        // Start the download
+        fetch(startUrl)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
                 }
-            }, 5000);
-        };
-        
-        xhr.send();
+                
+                const downloadId = data.download_id;
+                
+                // Poll for progress
+                const pollInterval = setInterval(() => {
+                    fetch(`/api/download/progress/${downloadId}`)
+                        .then(r => r.json())
+                        .then(progressData => {
+                            const progress = progressData.progress || 0;
+                            const status = progressData.status;
+                            
+                            progressBar.style.width = progress + '%';
+                            
+                            if (status === 'starting') {
+                                progressText.textContent = 'Connecting to node...';
+                            } else if (status === 'downloading') {
+                                progressText.textContent = `Downloading from network... ${progress.toFixed(1)}%`;
+                            } else if (status === 'complete') {
+                                clearInterval(pollInterval);
+                                progressText.textContent = 'Saving file...';
+                                
+                                // Download the completed file
+                                fetch(`/api/download/result/${downloadId}`)
+                                    .then(r => {
+                                        if (!r.ok) throw new Error('Download failed');
+                                        return r.blob();
+                                    })
+                                    .then(blob => {
+                                        progressBar.style.background = '#7c3aed';
+                                        progressText.textContent = 'Download completed!';
+                                        notification.querySelector('div').innerHTML = `✅ Downloaded ${filename}`;
+                                        
+                                        // Save file
+                                        const url = window.URL.createObjectURL(blob);
+                                        const link = document.createElement('a');
+                                        link.href = url;
+                                        link.download = filename;
+                                        link.click();
+                                        window.URL.revokeObjectURL(url);
+                                        
+                                        setTimeout(() => {
+                                            if (notification.parentNode) {
+                                                notification.parentNode.removeChild(notification);
+                                            }
+                                        }, 3000);
+                                    })
+                                    .catch(err => {
+                                        progressBar.style.background = '#ff7b72';
+                                        progressText.textContent = 'Save failed!';
+                                        console.error(err);
+                                    });
+                            } else if (status === 'error') {
+                                clearInterval(pollInterval);
+                                progressBar.style.background = '#ff7b72';
+                                progressText.textContent = 'Download failed!';
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Progress poll error:', err);
+                        });
+                }, 100); // Poll every 100ms
+            })
+            .catch(err => {
+                progressBar.style.background = '#ff7b72';
+                progressText.textContent = 'Connection error!';
+                notification.querySelector('div').innerHTML = `❌ ${err.message}`;
+                console.error(err);
+            });
     }
 
     function formatFileSize(bytes) {
