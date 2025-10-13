@@ -371,7 +371,7 @@ You can run rBrowser directly on Android by using [Termux](https://termux.dev/),
 
 ## ⚠️ Known Issues:
 
-- File download % progress showing only at the end of a download
+- None 🤷 😊
 
 -----
 
