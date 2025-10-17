@@ -347,6 +347,7 @@ You can run rBrowser directly on Android by using [Termux](https://termux.dev/),
 - 🔍 **NomadNet Search Engine**: Local NomadNet Nodes Exclusive Search Engine!
   - Cache index.mu pages locally, enabled by default, edit your preferences in the settings.
   - Search by node names or keywords inside cached pages
+  - Double Search Mode: "All Results (includes partial matches)" and "Exact Words Only"  
   - Search Engine Statistic in the bottom bar with settings information
   - Page cache management, search result highlight, dynamic cache refresh with real-time status updates
   - Ping functionality in search results to check if node is available
@@ -494,5 +495,9 @@ External software and all their rights are owned by the respective developers.
 <div align="center">
 
 # ❤️ Developed with love by Franky & neoemit ❤️
+
+-----
+
+### Thanks to: SudoIvan for his --host / --port arguments contribution & Casca for his excellent bug hunting skills! :)
 
 </div>
