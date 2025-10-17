@@ -3021,14 +3021,29 @@ function createSearchTabContent(tab) {
                 </div>
             </div>
             
-            <div style="margin: 20px 0; display: flex; gap: 10px;">
-                <input type="text" id="cache-search-input" placeholder="Enter search terms..." 
-                       style="flex: 1; padding: 12px; font-size: 16px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 4px;"
-                       onkeypress="if(event.key==='Enter') searchCachedPages()">
-                <button onclick="searchCachedPages()" 
-                        style="padding: 12px 20px; background: #0969da; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                    Search
-                </button>
+            <div style="margin: 20px 0;">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="cache-search-input" placeholder="Enter search terms..." 
+                        style="flex: 1; padding: 12px; font-size: 16px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 4px;"
+                        onkeypress="if(event.key==='Enter') searchCachedPages()">
+                    <button onclick="searchCachedPages()" 
+                            style="padding: 12px 20px; background: #0969da; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Search
+                    </button>
+                </div>
+                
+                <!-- Search Mode Options -->
+                <div style="display: flex; gap: 20px; align-items: center; padding: 8px 12px; background: #161b22; border-radius: 4px; border: 1px solid #30363d;">
+                    <span style="color: #7d8590; font-size: 13px; font-weight: 600;">Search Mode:</span>
+                    <label style="display: flex; align-items: center; color: #e6edf3; cursor: pointer; font-size: 13px;">
+                        <input type="radio" name="search-mode" value="partial" checked style="margin-right: 6px;">
+                        <span>All Results (includes partial matches)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; color: #e6edf3; cursor: pointer; font-size: 13px;">
+                        <input type="radio" name="search-mode" value="exact" style="margin-right: 6px;">
+                        <span>Exact Words Only</span>
+                    </label>
+                </div>
             </div>
             
             <div id="search-results" style="
@@ -3140,33 +3155,43 @@ async function searchCachedPages() {
     const query = document.getElementById('cache-search-input').value.trim();
     if (!query) return;
     
+    // Get the selected search mode
+    const searchMode = document.querySelector('input[name="search-mode"]:checked').value;
+    
     const resultsDiv = document.getElementById('search-results');
     resultsDiv.innerHTML = '<div style="color: #58a6ff; padding: 20px;">Searching...</div>';
     
     try {
-        const response = await fetch(`/api/search-cache?q=${encodeURIComponent(query)}`);
+        // Add search mode to the API request
+        const response = await fetch(`/api/search-cache?q=${encodeURIComponent(query)}&mode=${searchMode}`);
         const results = await response.json();
         
-        displaySearchResults(results, query);
+        displaySearchResults(results, query, searchMode);
     } catch (error) {
         resultsDiv.innerHTML = `<div style="color: #ff7b72; padding: 20px;">Search failed: ${error.message}</div>`;
     }
 }
 
-function displaySearchResults(results, query) {
+function displaySearchResults(results, query, searchMode) {
     const resultsDiv = document.getElementById('search-results');
    
     if (results.length === 0) {
+        const modeText = searchMode === 'exact' ? ' (exact word match)' : '';
         resultsDiv.innerHTML = `
             <div style="color: #7d8590; padding: 20px; text-align: center;">
-                <h3>No results found for "${query}"</h3>
-                <p>Try different search terms or browse more nodes to expand the cache.</p>
+                <h3>No results found for "${query}"${modeText}</h3>
+                <p>${searchMode === 'exact' ? 'Try switching to "All Results" mode for partial matches, or use' : 'Try'} different search terms or browse more nodes to expand the cache.</p>
             </div>
         `;
         return;
     }
    
-    let html = `<h3 style="color: #f0f6fc; margin-bottom: 15px; font-size: 14px;">Found ${results.length} result(s) for "<span style="background-color: #ffd700; color: #0d1117; padding: 2px 4px; border-radius: 2px; font-weight: 600;">${escapeHtml(query)}</span>"</h3>`;
+    // Show search mode in results header
+    const modeLabel = searchMode === 'exact' 
+        ? '<span style="background: #7c3aed; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 8px;">EXACT MATCH</span>' 
+        : '<span style="background: #0969da; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 8px;">ALL MATCHES</span>';
+    
+    let html = `<h3 style="color: #f0f6fc; margin-bottom: 15px; font-size: 14px;">Found ${results.length} result(s) for "<span style="background-color: #ffd700; color: #0d1117; padding: 2px 4px; border-radius: 2px; font-weight: 600;">${escapeHtml(query)}</span>" ${modeLabel}</h3>`;
    
     results.forEach(result => {
         // Determine status badge
@@ -3183,6 +3208,36 @@ function displaySearchResults(results, query) {
        
         // Escape node name for use in onclick
         const safeNodeName = escapeHtml(result.node_name).replace(/'/g, "\\'");
+        
+        // Enhanced highlighting based on search mode
+        let highlightedSnippet = result.snippet;
+        
+        // Check if the snippet contains the placeholder pattern
+        if (highlightedSnippet.includes('\\1') || highlightedSnippet.includes('$1')) {
+            highlightedSnippet = highlightedSnippet.replace(/\\\d+|\$\d+/g, (match) => {
+                return `<mark style="background-color: #ffd700; color: #0d1117; padding: 2px 4px; border-radius: 2px; font-weight: 600;">${escapeHtml(query)}</mark>`;
+            });
+        } else {
+            // Client-side highlighting
+            const queryWords = query.trim().split(/\s+/);
+            
+            queryWords.forEach(word => {
+                const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                
+                let regex;
+                if (searchMode === 'exact') {
+                    // For exact mode, match whole words only using word boundaries
+                    regex = new RegExp(`\\b(${escapedWord})\\b`, 'gi');
+                } else {
+                    // For partial mode, match anywhere in the text
+                    regex = new RegExp(`(${escapedWord})`, 'gi');
+                }
+                
+                highlightedSnippet = highlightedSnippet.replace(regex, 
+                    '<mark style="background-color: #ffd700; color: #0d1117; padding: 2px 4px; border-radius: 2px; font-weight: 600;">$1</mark>'
+                );
+            });
+        }
        
         html += `
             <div style="background: #21262d; border: 1px solid #30363d; padding: 15px; margin: 10px 0; border-radius: 6px;" data-node-hash="${result.node_hash}">
@@ -3211,7 +3266,7 @@ function displaySearchResults(results, query) {
                     </button>
                 </div>
                 <div style="color: #e6edf3; line-height: 1.5; background: #0d1117; padding: 10px; border-radius: 4px; font-size: 13px;">
-                    ${result.snippet}
+                    ${highlightedSnippet}
                 </div>
             </div>
         `;

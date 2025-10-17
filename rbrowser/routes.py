@@ -310,26 +310,29 @@ def register_routes(app, browser) -> None:
 
     @app.route("/api/search-cache")
     def api_search_cache():
-        query = request.args.get("q", "").lower().strip()
+        query = request.args.get("q", "").strip()
+        mode = request.args.get("mode", "partial")  # Default to partial matching
+        
         if not query:
             return jsonify([])
-
+        
+        # Keep original case for exact matching, but use lowercase for partial
+        query_lower = query.lower()
+        
         results: List[Dict[str, Any]] = []
         search_limit = int(browser.cache_settings.get("search_limit", 50))
-
+        
         try:
             for node_dir in _iter_cache_dirs(browser.cache_dir):
-                node_result = _search_node_cache(node_dir, query, search_limit, results)
+                node_result = _search_node_cache(node_dir, query, search_limit, results, mode)
                 if node_result is not None:
                     results.extend(node_result)
                 if len(results) >= search_limit:
                     break
             return jsonify(results)
-
         except Exception as exc:
             print(f"Search error: {exc}")
             import traceback
-
             traceback.print_exc()
             return jsonify({"error": str(exc)}), 500
 
@@ -552,6 +555,7 @@ def _search_node_cache(
     query: str,
     search_limit: int,
     results: List[Dict[str, Any]],
+    mode: str,
 ) -> Optional[List[Dict[str, Any]]]:
     node_results: List[Dict[str, Any]] = []
     name_file = node_dir / "node_name.txt"
@@ -585,6 +589,7 @@ def _search_node_cache(
                 cache_age_days,
                 search_limit,
                 results,
+                mode,
             )
         )
 
@@ -604,6 +609,7 @@ def _search_node_cache(
                     cache_age_days,
                     search_limit,
                     results,
+                    mode,
                 )
             )
 
@@ -620,6 +626,7 @@ def _match_content(
     cache_age_days: Optional[float],
     search_limit: int,
     results: List[Dict[str, Any]],
+    mode: str,
 ) -> List[Dict[str, Any]]:
     matches: List[Dict[str, Any]] = []
     try:
@@ -628,12 +635,23 @@ def _match_content(
         print(f"Error reading cache file {file_path}: {exc}")
         return matches
 
-    if query not in content.lower() and query not in node_name.lower():
-        return matches
+    # Normalize for partial matching
+    query_lc = query.lower()
+    content_lc = content.lower()
+    node_name_lc = node_name.lower()
+
+    if mode == "exact":
+        # Match whole words only using word boundaries
+        pattern = re.compile(rf"\b{re.escape(query)}\b")
+        if not pattern.search(content) and not pattern.search(node_name):
+            return matches
+    else:
+        if query_lc not in content_lc and query_lc not in node_name_lc:
+            return matches
 
     snippet = extract_snippet(content, query)
-    if query in node_name.lower():
-        snippet = f"Node name match: {node_name}\n\n" + snippet
+    if (mode == "exact" and query in node_name) or (mode != "exact" and query_lc in node_name_lc):
+        snippet = f"Node name match ({mode}): {node_name}\n\n" + snippet
 
     page_name = file_path.name
     page_path = "/page/index.mu" if page_name == "index.mu" else f"/page/{page_name}"
