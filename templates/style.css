@@ -1272,3 +1272,355 @@ mark {
         display: none !important;
     }
 }
+
+/* Auto-reload button and modal styles */
+.auto-reload-btn {
+    background: none;
+    border: none;
+    color: #e6edf3;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 20px;
+    transition: all 0.2s ease;
+}
+
+.auto-reload-btn:hover {
+    background: #21262d;
+}
+
+.auto-reload-btn.active {
+    color: #3fb950;
+    animation: pulse-reload 2s ease-in-out infinite;
+}
+
+@keyframes pulse-reload {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.auto-reload-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10001;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auto-reload-dialog {
+    background: #161b22;
+    border: 2px solid #30363d;
+    color: #e6edf3;
+    padding: 24px;
+    border-radius: 8px;
+    max-width: 450px;
+    min-width: 350px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.auto-reload-dialog h3 {
+    margin: 0 0 20px 0;
+    color: #58a6ff;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auto-reload-setting {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #0d1117;
+    border-radius: 6px;
+    border: 1px solid #30363d;
+}
+
+.auto-reload-setting label {
+    display: block;
+    color: #e6edf3;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.auto-reload-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 24px;
+    background: #30363d;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.toggle-switch.active {
+    background: #3fb950;
+}
+
+.toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+
+.toggle-switch.active .toggle-slider {
+    transform: translateX(24px);
+}
+
+.interval-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    border-radius: 4px;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+.interval-input:focus {
+    outline: none;
+    border-color: #58a6ff;
+}
+
+.interval-presets {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.preset-btn {
+    padding: 4px 10px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.preset-btn:hover {
+    background: #30363d;
+    border-color: #58a6ff;
+}
+
+.auto-reload-info {
+    padding: 10px;
+    background: #1c2128;
+    border-left: 3px solid #58a6ff;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #7d8590;
+    margin-top: 12px;
+}
+
+.auto-reload-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.auto-reload-actions button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.btn-cancel {
+    background: #21262d;
+    color: #e6edf3;
+}
+
+.btn-cancel:hover {
+    background: #30363d;
+}
+
+.btn-save {
+    background: #238636;
+    color: white;
+}
+
+.btn-save:hover {
+    background: #2ea043;
+}
+
+.reload-countdown {
+    font-size: 11px;
+    color: #7d8590;
+    margin-left: 4px;
+}
+
+/* Updated header layout - no overlapping */
+.header {
+    background: #21262d;
+    padding: 12px 24px; 
+    color: #f0f6fc;
+    border-bottom: 1px solid #30363d;
+    position: relative;
+    height: 50px;
+    min-height: 50px; 
+    max-height: 50px; 
+    flex-shrink: 0;
+    overflow: visible; /* Changed from hidden to visible */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.page-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    margin-right: 0; /* Remove the fixed margin */
+    overflow: hidden;
+}
+
+/* Container for all header buttons */
+.header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* Update button styles to work with flexbox */
+.view-toggle,
+.auto-reload-btn {
+    position: relative; /* Changed from absolute */
+    top: auto;
+    right: auto;
+    transform: none;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.12s ease;
+    z-index: 10;
+    display: none;
+    white-space: nowrap;
+    min-width: 90px;
+    text-align: center;
+}
+
+.view-toggle:hover,
+.auto-reload-btn:hover {
+    background: #30363d;
+    border-color: #58a6ff;
+}
+
+.auto-reload-btn {
+    min-width: auto; /* Allow auto-reload button to be smaller */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.auto-reload-btn.active {
+    color: #3fb950;
+    animation: pulse-reload 2s ease-in-out infinite;
+}
+
+/* ASCII control container */
+.ascii-control {
+    position: relative; /* Changed from absolute */
+    top: auto;
+    right: auto;
+    transform: none;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    z-index: 10;
+}
+
+.ascii-status {
+    color: #e6edf3;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Auto-reload button - hide by default */
+.auto-reload-btn {
+    position: relative;
+    top: auto;
+    right: auto;
+    transform: none;
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px; /* Slightly smaller for better balance */
+    transition: all 0.2s ease;
+    z-index: 10;
+    display: none; /* Hidden by default */
+    white-space: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2px; /* Reduced gap */
+    min-width: auto;
+    line-height: 1; /* Remove extra line height */
+}
+
+.auto-reload-btn:hover {
+    background: #30363d;
+    border-color: #58a6ff;
+}
+
+/* Active state - green button */
+.auto-reload-btn.active {
+    background: #238636; /* Green background */
+    color: #ffffff;
+    border-color: #2ea043;
+    animation: pulse-reload 2s ease-in-out infinite;
+}
+
+.auto-reload-btn.active:hover {
+    background: #2ea043;
+}
+
+@keyframes pulse-reload {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Countdown timer - white color for better visibility */
+.reload-countdown {
+    font-size: 11px;
+    color: #ffffff; /* White color */
+    font-weight: 600;
+    margin-left: 2px; /* Reduced margin */
+    line-height: 1;
+}

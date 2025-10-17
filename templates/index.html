@@ -93,20 +93,30 @@
                 <img src="/templates/fingerprint.png" alt="" style="width: 20px; height: 20px; vertical-align: middle;">                
             </button>           
         </div>
+
         <div class="header">
             <div class="page-info">
                 <span class="page-title"><center>Select a node from the announce list, favorites, or paste an address into the bar to navigate pages.</center></span>
                 <span class="page-details"></span>
             </div>
-            <button class="view-toggle" title="Toggle between rendered and raw view">Raw View</button>
-            <div class="ascii-control" style="position: absolute; top: 50%; transform: translateY(-50%); right: 120px; display: none; align-items: center; gap: 8px;">
-                <span class="ascii-status" style="color: #e6edf3; font-size: 12px; font-weight: 600;">Text Mode</span>
-                <label class="switch">
-                    <input type="checkbox" class="ascii-switch" onchange="toggleAsciiOptimization()">
-                    <span class="slider"></span>
-                </label>
+            
+            <!-- New container for all header buttons -->
+            <div class="header-buttons">
+                <div class="ascii-control" style="display: none;">
+                    <span class="ascii-status">Text Mode</span>
+                    <label class="switch">
+                        <input type="checkbox" class="ascii-switch" onchange="toggleAsciiOptimization()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <button class="view-toggle" title="Toggle between rendered and raw view">Raw View</button>
+                <button class="auto-reload-btn" onclick="showAutoReloadSettings()" title="Auto-reload settings">
+                    ⏱️
+                    <span class="reload-countdown"></span>
+                </button>
             </div>
         </div>
+
         <div class="browser-area">
             <div class="page-content">
                 <div class="welcome">
@@ -177,6 +187,9 @@
         let statusFetchFailures = 0;
         let maxStatusFailures = 3; // Allow 3 failures before marking as connection error
         let lastNodesHash = '';
+        // Auto-reload system variables
+        let autoReloadTimers = {}; // Store timers per tab
+        let autoReloadSettings = {}; // Store settings per tab
 
 
 class BrowserTab {
@@ -193,6 +206,13 @@ class BrowserTab {
         this.historyIndex = -1;
         this.currentUrl = '';
         this.knownNodeName = null;
+        this.autoReloadEnabled = false;
+        this.autoReloadInterval = 60;
+        this.autoReloadTimer = null;
+        this.autoReloadCountdown = 0;
+        this.notificationShown = false;
+        this.asciiOptimized = false;
+        this.savedFormData = {}; // Add this line
     }
     
     setTitle(title) {
@@ -247,7 +267,338 @@ class BrowserTab {
             if (forwardBtn) forwardBtn.disabled = this.historyIndex >= this.navigationHistory.length - 1;
         }
     }
+
+    startAutoReload() {
+        this.stopAutoReload();
+        this.autoReloadEnabled = true;
+        this.autoReloadCountdown = this.autoReloadInterval;
+        this.notificationShown = false;
+        
+        this.autoReloadTimer = setInterval(() => {
+            this.autoReloadCountdown--;
+            
+            // Only update button if this is the active tab
+            if (this.id === activeTabId) {
+                updateAutoReloadButton();
+            }
+            
+            // Show notification 2 seconds before reload
+            if (this.autoReloadCountdown === 2 && !this.notificationShown) {
+                this.notificationShown = true;
+                showNotification(
+                    '⏱️ Auto-reloading page in 2 seconds...',
+                    'info',
+                    2000
+                );
+            }
+            
+            if (this.autoReloadCountdown <= 0) {
+                this.autoReloadCountdown = this.autoReloadInterval;
+                this.notificationShown = false;
+                
+                if (this.currentUrl) {
+                    console.log(`Auto-reloading tab ${this.id}: ${this.currentUrl}`);
+                    
+                    // Show notification higher on the screen (stack position 1)
+                    showNotification(
+                        '🔄 Auto-reloading page now...',
+                        'info',
+                        1500,
+                        1  // Stack position parameter - shows higher
+                    );
+                    
+                    // Reload THIS specific tab, not the active one
+                    this.reloadPage();
+                }
+            }
+        }, 1000);
+        
+        console.log(`Auto-reload started for tab ${this.id}: ${this.autoReloadInterval}s`);
+    }
+
+    reloadPage() {
+        if (!this.currentUrl) return;
+        
+        // Store the current view state before reloading
+        const wasAsciiOptimized = this.asciiOptimized || false;
+        const wasRawView = this.isRawView || false;
+        
+        // Save form data before reload
+        this.saveFormData();
+        
+        // Temporarily switch to this tab to reload it
+        const previousActiveTab = activeTabId;
+        const needsSwitch = (this.id !== activeTabId);
+        
+        if (needsSwitch) {
+            // Silently switch to this tab
+            activeTabId = this.id;
+        }
+        
+        // Perform the reload
+        navigateToUrlInternalTab(this.currentUrl, false);
+        
+        // Wait for content to load, then restore view state and form data
+        setTimeout(() => {
+            const content = document.querySelector(`#${this.id} .page-content`);
+            const asciiSwitch = document.querySelector(`#${this.id} .ascii-switch`);
+            const asciiStatus = document.querySelector(`#${this.id} .ascii-status`);
+            const viewToggle = document.querySelector(`#${this.id} .view-toggle`);
+            
+            // Restore ASCII mode if it was enabled
+            if (wasAsciiOptimized && content && asciiSwitch) {
+                if (!content.classList.contains('ascii-optimized')) {
+                    content.classList.add('ascii-optimized');
+                    asciiSwitch.checked = true;
+                    if (asciiStatus) {
+                        asciiStatus.textContent = 'Ascii Mode';
+                    }
+                }
+            }
+            
+            // Restore raw view if it was enabled
+            if (wasRawView && this.currentRawContent && viewToggle) {
+                content.innerHTML = escapeHtml(this.currentRawContent);
+                content.className = 'page-content raw';
+                viewToggle.textContent = 'Rendered';
+                this.isRawView = true;
+                
+                if (asciiSwitch) {
+                    asciiSwitch.disabled = true;
+                }
+            }
+            
+            // Store the view state back to the tab
+            this.asciiOptimized = wasAsciiOptimized;
+            this.isRawView = wasRawView;
+            
+            // Restore form data immediately - no additional delay
+            this.restoreFormDataFast();
+            
+            // Switch back to the previous tab if we switched
+            if (needsSwitch) {
+                activeTabId = previousActiveTab;
+                
+                // Update UI to show the correct active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                const tabElement = document.querySelector(`[data-tab-id="${previousActiveTab}"]`);
+                const contentElement = document.getElementById(previousActiveTab);
+                
+                if (tabElement && contentElement) {
+                    tabElement.classList.add('active');
+                    contentElement.classList.add('active');
+                }
+            }
+        }, 300); // Reduced from 500ms to 300ms
+    }    
+
+    stopAutoReload() {
+        if (this.autoReloadTimer) {
+            clearInterval(this.autoReloadTimer);
+            this.autoReloadTimer = null;
+        }
+        this.autoReloadEnabled = false;
+        this.autoReloadCountdown = 0;
+    }
+
+    setAutoReloadInterval(seconds) {
+        this.autoReloadInterval = seconds;
+        if (this.autoReloadEnabled) {
+            this.startAutoReload();
+        }
+    }
     
+    saveFormData() {
+        const formData = {};
+        const inputs = document.querySelectorAll(`#${this.id} .page-content input, #${this.id} .page-content textarea`);
+        
+        inputs.forEach(input => {
+            if (input.name || input.id) {
+                const key = input.name || input.id;
+                
+                if (input.type === 'checkbox') {
+                    formData[key] = {
+                        type: 'checkbox',
+                        checked: input.checked,
+                        value: input.value
+                    };
+                } else if (input.type === 'radio') {
+                    if (input.checked) {
+                        formData[key] = {
+                            type: 'radio',
+                            value: input.value,
+                            checked: true
+                        };
+                    }
+                } else {
+                    formData[key] = {
+                        type: input.type || 'text',
+                        value: input.value
+                    };
+                }
+            }
+        });
+        
+        this.savedFormData = formData;
+        console.log('Form data saved for tab', this.id, ':', formData);
+        return formData;
+    }
+
+    restoreFormData() {
+        if (!this.savedFormData || Object.keys(this.savedFormData).length === 0) {
+            console.log(`[Tab ${this.id}] No form data to restore`);
+            return;
+        }
+        
+        console.log(`[Tab ${this.id}] Attempting to restore form data:`, this.savedFormData);
+        
+        let restoredCount = 0;
+        
+        // Use requestAnimationFrame for immediate execution on next paint
+        requestAnimationFrame(() => {
+            for (const [key, data] of Object.entries(this.savedFormData)) {
+                let input = null;
+                
+                // Try multiple strategies to find the input field
+                // 1. By name attribute
+                input = document.querySelector(`#${this.id} .page-content input[name="${key}"]`) ||
+                        document.querySelector(`#${this.id} .page-content textarea[name="${key}"]`);
+                
+                // 2. By id attribute
+                if (!input) {
+                    input = document.querySelector(`#${this.id} .page-content input[id="${key}"]`) ||
+                            document.querySelector(`#${this.id} .page-content textarea[id="${key}"]`);
+                }
+                
+                // 3. By placeholder attribute (useful for Micron forms)
+                if (!input && data.placeholder) {
+                    input = document.querySelector(`#${this.id} .page-content input[placeholder="${data.placeholder}"]`) ||
+                            document.querySelector(`#${this.id} .page-content textarea[placeholder="${data.placeholder}"]`);
+                }
+                
+                // 4. By index if key contains "input_"
+                if (!input && key.startsWith('input_')) {
+                    const index = parseInt(key.split('_')[1]);
+                    const allInputs = document.querySelectorAll(`#${this.id} .page-content input, #${this.id} .page-content textarea`);
+                    input = allInputs[index];
+                }
+                
+                if (input) {
+                    if (data.type === 'checkbox') {
+                        input.checked = data.checked;
+                        if (data.value) {
+                            input.value = data.value;
+                        }
+                    } else if (data.type === 'radio') {
+                        if (data.checked && input.value === data.value) {
+                            input.checked = true;
+                        }
+                    } else {
+                        input.value = data.value;
+                    }
+                    restoredCount++;
+                    console.log(`[Tab ${this.id}] ✓ Restored field "${key}":`, data.value);
+                } else {
+                    console.warn(`[Tab ${this.id}] ✗ Could not find input field for key: ${key}`);
+                }
+            }
+            
+            // Show notification if fields were restored
+            if (restoredCount > 0) {
+                console.log(`[Tab ${this.id}] Successfully restored ${restoredCount} field(s)`);
+                if (this.id === activeTabId) {
+                    showNotification(
+                        `✅ Restored ${restoredCount} form field${restoredCount > 1 ? 's' : ''}`,
+                        'success',
+                        2000,
+                        2
+                    );
+                }
+            }
+        });
+    }
+
+    restoreFormDataFast() {
+        if (!this.savedFormData || Object.keys(this.savedFormData).length === 0) {
+            return;
+        }
+        
+        const content = document.querySelector(`#${this.id} .page-content`);
+        if (!content) return;
+        
+        let restoredCount = 0;
+        
+        // Function to attempt restoration
+        const attemptRestore = () => {
+            for (const [key, data] of Object.entries(this.savedFormData)) {
+                let input = null;
+                
+                // Try to find the input field
+                input = document.querySelector(`#${this.id} .page-content input[name="${key}"]`) ||
+                        document.querySelector(`#${this.id} .page-content textarea[name="${key}"]`) ||
+                        document.querySelector(`#${this.id} .page-content input[id="${key}"]`) ||
+                        document.querySelector(`#${this.id} .page-content textarea[id="${key}"]`);
+                
+                if (!input && data.placeholder) {
+                    input = document.querySelector(`#${this.id} .page-content input[placeholder="${data.placeholder}"]`) ||
+                            document.querySelector(`#${this.id} .page-content textarea[placeholder="${data.placeholder}"]`);
+                }
+                
+                if (!input && key.startsWith('input_')) {
+                    const index = parseInt(key.split('_')[1]);
+                    const allInputs = document.querySelectorAll(`#${this.id} .page-content input, #${this.id} .page-content textarea`);
+                    input = allInputs[index];
+                }
+                
+                if (input && !input.dataset.restored) {
+                    if (data.type === 'checkbox') {
+                        input.checked = data.checked;
+                        if (data.value) input.value = data.value;
+                    } else if (data.type === 'radio') {
+                        if (data.checked && input.value === data.value) {
+                            input.checked = true;
+                        }
+                    } else {
+                        input.value = data.value;
+                    }
+                    input.dataset.restored = 'true'; // Mark as restored
+                    restoredCount++;
+                }
+            }
+        };
+        
+        // Observe DOM changes and restore immediately when inputs appear
+        const observer = new MutationObserver((mutations) => {
+            attemptRestore();
+            
+            // Stop observing after successful restoration
+            if (restoredCount >= Object.keys(this.savedFormData).length) {
+                observer.disconnect();
+                if (restoredCount > 0 && this.id === activeTabId) {
+                    showNotification(
+                        `✅ Restored ${restoredCount} form field${restoredCount > 1 ? 's' : ''}`,
+                        'success',
+                        2000,
+                        2
+                    );
+                }
+            }
+        });
+        
+        observer.observe(content, {
+            childList: true,
+            subtree: true
+        });
+        
+        // Also try immediate restoration
+        attemptRestore();
+        
+        // Disconnect observer after 2 seconds as fallback
+        setTimeout(() => observer.disconnect(), 2000);
+    }
+
 }
 
 // TAB MANAGEMENT FUNCTIONS
@@ -259,6 +610,11 @@ function createNewTab() {
     createTabElement(tab);
     createTabContent(tab);
     switchToTab(tabId);
+    
+    // Hide auto-reload button on new empty tabs
+    setTimeout(() => {
+        updateAutoReloadButton();
+    }, 100);
     
     return tab;
 }
@@ -330,6 +686,7 @@ function switchToTab(tabId) {
             
             updateNodeSelection();
             setTimeout(updateStarButtonState, 100);
+            updateAutoReloadButton(); // Update auto-reload button
         }
     }
 }
@@ -362,6 +719,12 @@ function closeTab(tabId, event) {
     
     if (tabs.length === 1) {
         return;
+    }
+    
+    // Stop auto-reload timer before removing tab
+    const tab = tabs[tabIndex];
+    if (tab) {
+        tab.stopAutoReload();
     }
     
     tabs.splice(tabIndex, 1);
@@ -1360,6 +1723,7 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                         tab.title = nodeName;
                     }
                     
+                    updateAutoReloadButton();
                     addClickHandlersToCurrentTab();
                     
                 } else {
@@ -1371,6 +1735,8 @@ function fetchPageByUrlTab(hash, path, originalUrl) {
                     const asciiToggle = document.querySelector(`#${tab.id} .ascii-toggle`);
                     if (asciiToggle) {
                         asciiToggle.style.display = 'none';
+
+                    updateAutoReloadButton();
                     }
 
                     // Only update title if this tab is still active
@@ -3603,7 +3969,7 @@ function toggleAsciiOptimization() {
         asciiStatus.textContent = 'Text Mode';
     }
     
-    // Store preference per tab
+    // Store preference in tab object
     tab.asciiOptimized = content.classList.contains('ascii-optimized');
 }
 
@@ -3947,6 +4313,166 @@ function handleSwipe() {
     touchStartX = 0;
     touchStartY = 0;
 }
+
+// Auto-reload Functions
+function showAutoReloadSettings() {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'auto-reload-modal';
+    overlay.id = 'auto-reload-modal';
+    
+    const dialog = document.createElement('div');
+    dialog.className = 'auto-reload-dialog';
+    
+    dialog.innerHTML = `
+        <h3>⏱️ Auto-Reload Settings</h3>
+        
+        <div class="auto-reload-setting">
+            <div class="auto-reload-toggle">
+                <label>Enable Auto-Reload</label>
+                <div class="toggle-switch ${tab.autoReloadEnabled ? 'active' : ''}" onclick="toggleAutoReloadInModal()">
+                    <div class="toggle-slider"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="auto-reload-setting" id="interval-setting" style="${tab.autoReloadEnabled ? '' : 'opacity: 0.5; pointer-events: none;'}">
+            <label>Reload Interval (seconds)</label>
+            <input type="number" class="interval-input" id="reload-interval-input" 
+                   min="5" max="3600" value="${tab.autoReloadInterval}"
+                   placeholder="Enter seconds (5-3600)">
+            
+            <div class="interval-presets">
+                <button class="preset-btn" onclick="setIntervalPreset(10)">10s</button>
+                <button class="preset-btn" onclick="setIntervalPreset(30)">30s</button>
+                <button class="preset-btn" onclick="setIntervalPreset(60)">1m</button>
+                <button class="preset-btn" onclick="setIntervalPreset(120)">2m</button>
+                <button class="preset-btn" onclick="setIntervalPreset(300)">5m</button>
+                <button class="preset-btn" onclick="setIntervalPreset(600)">10m</button>
+            </div>
+        </div>
+        
+        <div class="auto-reload-info">
+            ℹ️ The current page will automatically reload at the specified interval. This is useful for monitoring live content.
+        </div>
+        
+        <div class="auto-reload-actions">
+            <button class="btn-cancel" onclick="closeAutoReloadModal()">Cancel</button>
+            <button class="btn-save" onclick="saveAutoReloadSettings()">Save Settings</button>
+        </div>
+    `;
+    
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closeAutoReloadModal();
+        }
+    });
+    
+    // Close on Escape key
+    const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+            document.removeEventListener('keydown', escapeHandler);
+            closeAutoReloadModal();
+        }
+    };
+    document.addEventListener('keydown', escapeHandler);
+}
+
+function toggleAutoReloadInModal() {
+    const toggle = document.querySelector('.toggle-switch');
+    const intervalSetting = document.getElementById('interval-setting');
+    
+    toggle.classList.toggle('active');
+    
+    if (toggle.classList.contains('active')) {
+        intervalSetting.style.opacity = '1';
+        intervalSetting.style.pointerEvents = 'auto';
+    } else {
+        intervalSetting.style.opacity = '0.5';
+        intervalSetting.style.pointerEvents = 'none';
+    }
+}
+
+function setIntervalPreset(seconds) {
+    document.getElementById('reload-interval-input').value = seconds;
+}
+
+function saveAutoReloadSettings() {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    const toggle = document.querySelector('.toggle-switch');
+    const intervalInput = document.getElementById('reload-interval-input');
+    const interval = parseInt(intervalInput.value) || 60;
+    
+    // Validate interval
+    if (interval < 5 || interval > 3600) {
+        showNotification('Interval must be between 5 and 3600 seconds', 'error', 3000);
+        return;
+    }
+    
+    const enabled = toggle.classList.contains('active');
+    
+    tab.setAutoReloadInterval(interval);
+    
+    if (enabled) {
+        tab.startAutoReload();
+        showNotification(
+            `Auto-reload enabled: ${interval}s interval`,
+            'success',
+            3000
+        );
+    } else {
+        tab.stopAutoReload();
+        showNotification('Auto-reload disabled', 'info', 3000);
+    }
+    
+    updateAutoReloadButton();
+    closeAutoReloadModal();
+}
+
+function closeAutoReloadModal() {
+    const modal = document.getElementById('auto-reload-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function updateAutoReloadButton() {
+    const tab = getActiveTab();
+    if (!tab) return;
+    
+    const btn = document.querySelector(`#${tab.id} .auto-reload-btn`);
+    const countdown = document.querySelector(`#${tab.id} .reload-countdown`);
+    
+    if (!btn || !countdown) return;
+    
+    // Hide button if no page is loaded (new tab or error state)
+    if (!tab.currentUrl || tab.currentUrl === '') {
+        btn.style.display = 'none';
+        return;
+    }
+    
+    // Show button when a page is loaded
+    btn.style.display = 'flex';
+    
+    if (tab.autoReloadEnabled) {
+        btn.classList.add('active');
+        countdown.textContent = `${tab.autoReloadCountdown}s`;
+        btn.title = `Auto-reload active: ${tab.autoReloadCountdown}s until next reload`;
+    } else {
+        btn.classList.remove('active');
+        countdown.textContent = '';
+        btn.title = 'Auto-reload settings (click to configure)';
+    }
+}
+
 
     </script>
 </body>
