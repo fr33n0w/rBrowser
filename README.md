@@ -323,6 +323,7 @@ You can run rBrowser directly on Android by using [Termux](https://termux.dev/),
 - 🧭 **URL Navigation**: Address bar with manual URL input support
 - ⬅️➡️ **Navigation History**: Back/forward button functionality
 - 🔗 **Link Detection**: Automatic detection of NomadNet URLs in content
+- ⏱️  Timed pages Auto-reload function with form data persistence, per each single page
 - 🖱️ **Click Navigation**: Navigate by clicking links in rendered content 
 - 🔔 **Notification System**: Modern info box notifications when info are needed
 - 🔀 **Multiple URL Formats**: Enhanced parsing for various NomadNet URL conventions
