@@ -1,5 +1,5 @@
 {
-  "auto_cache_enabled": true,
+  "auto_cache_enabled": false,
   "size_limit_mb": 100,
   "expiry_days": 30,
   "search_limit": 100,
