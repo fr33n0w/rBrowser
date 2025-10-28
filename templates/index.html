@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>rBrowser v1.0 - Standalone NomadNet Browser</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="style.css">
@@ -141,7 +141,7 @@
         </div>
         <div class="shortcuts-bar">
             <span class="shortcut-item">
-                ↳ <kbd>Alt + N</kbd> Open New Tab
+                <kbd>Alt + N</kbd> New Tab
             </span>
             <span class="shortcut-item">
                 <kbd>Alt + X</kbd> Close Current Tab
@@ -159,8 +159,8 @@
                 <kbd>Ctrl + X</kbd> Close all other tabs
             </span>
             <span class="shortcut-item">
-                <kbd>Alt + I</kbd> Send Fingerprint 
-            </span>⇅
+                <kbd>Alt + I</kbd> Fingerprint 
+            </span>
         </div>
     </div>
 </template>
@@ -3975,92 +3975,128 @@ function toggleAsciiOptimization() {
 
 function detectContentType(content) {
     if (!content) return 'text';
-    
+   
     // Count lines
     const lines = content.split('\n');
     const totalLines = lines.length;
     if (totalLines < 3) return 'text';
-    
+   
     let asciiArtLines = 0;
     let textLines = 0;
-    
-    // Comprehensive character sets
-    const boxDrawingChars = /[─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬┏┓┗┛┣┫┳┻╋━┃╒╓╕╖╘╙╛╜╞╟╡╢╤╥╧╨╪╫]/g;
+    let emptyLines = 0;
+   
+    // Comprehensive character sets - ensure all box drawing chars are included
+    const boxDrawingChars = /[─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬┏┓┗┛┣┫┳╋━┃╒╓╕╖╘╙╛╜╞╟╡╢╤╥╧╨╪╫]/g;
     const blockChars = /[█▓▒░▀▄▌▐▖▗▘▙▚▛▜▝▞▟■□▪▫●○◆◇]/g;
-    const repeatedSpecialChars = /([█▓▒░▀▄■●○◆◇★☆▲△▼▽═─│┃━=\-_#@*])\1{5,}/;
     
+    // Extended: Include emoji, decorative Unicode, and mathematical alphanumeric symbols
+    const emojiChars = /[\u{1F100}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1D400}-\u{1D7FF}]|[★☆▲△▼▽▶◀™🔍♦]/gu;
+    
+    const repeatedSpecialChars = /([█▓▒░▀▄■●○◆◇★☆▲△▼▽═─│┃━=\-_#@*▀▄])\1{8,}/;
+   
     // Text indicators - common words and sentence patterns
     const hasCommonWords = (line) => {
-        const commonWords = /\b(the|is|are|was|were|have|has|will|can|this|that|with|from|for|and|or|but|to|in|on|at)\b/i;
+        const commonWords = /\b(the|is|are|was|were|have|has|will|can|this|that|with|from|for|and|or|but|to|in|on|at|be|by|as|of)\b/i;
         return commonWords.test(line);
     };
-    
+   
     const hasSentenceStructure = (line) => {
         // Check for sentence-like patterns (capital letter followed by words and punctuation)
         return /^[A-Z][a-z\s]{10,}[.!?]/.test(line.trim());
     };
-    
+   
     lines.forEach(line => {
         const trimmed = line.trim();
-        if (trimmed.length < 6) return;
+        if (trimmed.length === 0) {
+            emptyLines++;
+            return;
+        }
         
+        if (trimmed.length < 3) return;
+       
         // Count character types
         const boxCount = (trimmed.match(boxDrawingChars) || []).length;
         const blockCount = (trimmed.match(blockChars) || []).length;
+        const emojiCount = (trimmed.match(emojiChars) || []).length;
         const hasRepeated = repeatedSpecialChars.test(trimmed);
-        
+       
         // Calculate ratios
         const alphanumeric = trimmed.replace(/[^a-zA-Z0-9]/g, '').length;
         const alphaRatio = alphanumeric / trimmed.length;
         const specialRatio = 1 - alphaRatio;
-        
+       
+        // Total decorative characters
+        const totalDecorative = boxCount + blockCount + emojiCount;
+        const decorativeRatio = totalDecorative / trimmed.length;
+       
         // Check for text characteristics
         const looksLikeText = hasCommonWords(trimmed) || hasSentenceStructure(trimmed);
         const isVeryLongLine = trimmed.length > 60;
-        
-        // ASCII art scoring
-        if ((boxCount >= 3 || blockCount >= 3 || hasRepeated || specialRatio > 0.5) && 
+       
+        // ASCII art scoring - prioritize high decorative content
+        if ((boxCount >= 3 || blockCount >= 3 || emojiCount >= 3 || 
+             totalDecorative >= 5 || hasRepeated || 
+             decorativeRatio > 0.3 || specialRatio > 0.6) &&
             !looksLikeText) {
             asciiArtLines++;
         }
-        // Text scoring - strong text indicators
-        else if (looksLikeText || (alphaRatio > 0.7 && trimmed.length > 20)) {
+        // Text scoring - strong text indicators only
+        else if (looksLikeText && alphaRatio > 0.5 && trimmed.length > 15) {
             textLines++;
         }
         // Long lines with ASCII chars but also text
-        else if (isVeryLongLine && (boxCount > 0 || blockCount > 0) && !looksLikeText) {
-            asciiArtLines += 0.5; // Partial score
+        else if (isVeryLongLine && totalDecorative > 0 && !looksLikeText) {
+            asciiArtLines += 0.5;
+        }
+        // Mixed content - slight preference for ASCII if decorative chars present
+        else if (totalDecorative >= 2) {
+            asciiArtLines += 0.3;
         }
     });
-    
+   
     // Check for ASCII art concentration at the beginning
     let consecutiveAsciiLines = 0;
     let maxConsecutive = 0;
-    for (let i = 0; i < Math.min(10, lines.length); i++) {
+    let earlyAsciiLines = 0;
+    
+    for (let i = 0; i < Math.min(15, lines.length); i++) {
         const line = lines[i].trim();
+        if (line.length === 0) continue;
+        
         const boxCount = (line.match(boxDrawingChars) || []).length;
         const blockCount = (line.match(blockChars) || []).length;
-        
-        if (boxCount >= 3 || blockCount >= 3) {
+        const emojiCount = (line.match(emojiChars) || []).length;
+        const totalDec = boxCount + blockCount + emojiCount;
+        const decRatio = totalDec / line.length;
+       
+        if (boxCount >= 3 || blockCount >= 3 || emojiCount >= 3 || decRatio > 0.3) {
             consecutiveAsciiLines++;
             maxConsecutive = Math.max(maxConsecutive, consecutiveAsciiLines);
+            if (i < 5) earlyAsciiLines++; // Count ASCII in first 5 lines
         } else {
             consecutiveAsciiLines = 0;
         }
     }
-    
-    const asciiRatio = asciiArtLines / totalLines;
-    const textRatio = textLines / totalLines;
-    
-    console.log(`ASCII detection: ${asciiArtLines.toFixed(1)} ASCII lines, ${textLines} text lines out of ${totalLines} total`);
-    console.log(`Ratios: ASCII ${(asciiRatio * 100).toFixed(1)}%, Text ${(textRatio * 100).toFixed(1)}%, Max consecutive: ${maxConsecutive}`);
-    
-    // Decision logic with text override
-    if (textRatio > 0.4) {
-        // Strong text content
+   
+    const asciiRatio = asciiArtLines / (totalLines - emptyLines);
+    const textRatio = textLines / (totalLines - emptyLines);
+   
+    console.log(`ASCII detection: ${asciiArtLines.toFixed(1)} ASCII lines, ${textLines} text lines out of ${totalLines} total (${emptyLines} empty)`);
+    console.log(`Ratios: ASCII ${(asciiRatio * 100).toFixed(1)}%, Text ${(textRatio * 100).toFixed(1)}%`);
+    console.log(`Max consecutive: ${maxConsecutive}, Early ASCII lines: ${earlyAsciiLines}`);
+   
+    // Decision logic - favor ASCII if there's a strong header/banner
+    if (earlyAsciiLines >= 2 || maxConsecutive >= 3) {
+        // Strong ASCII art header/banner present
+        return 'ascii';
+    } else if (textRatio > 0.6 && asciiRatio < 0.15) {
+        // Overwhelming text content with minimal ASCII
         return 'text';
-    } else if (asciiRatio > 0.25 || maxConsecutive >= 3) {
-        // ASCII art present
+    } else if (asciiRatio > 0.2 || maxConsecutive >= 4) {
+        // Significant ASCII art present
+        return 'ascii';
+    } else if (asciiRatio > textRatio) {
+        // More ASCII than text
         return 'ascii';
     } else {
         // Default to text for ambiguous cases
@@ -4068,6 +4104,67 @@ function detectContentType(content) {
     }
 }
 
+// Enhanced mobile detection
+function isMobileDevice() {
+    // Check multiple conditions
+    const touchDevice = ('ontouchstart' in window) || 
+                       (navigator.maxTouchPoints > 0) || 
+                       (navigator.msMaxTouchPoints > 0);
+    
+    const smallScreen = window.innerWidth <= 768;
+    
+    const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    const noHover = window.matchMedia('(hover: none)').matches;
+    
+    // Pocophone F1 and similar devices detection
+    const pointerCoarse = window.matchMedia('(pointer: coarse)').matches;
+    
+    return (touchDevice && smallScreen) || mobileUserAgent || (noHover && pointerCoarse);
+}
+
+// Apply mobile class if detected
+if (isMobileDevice()) {
+    document.documentElement.classList.add('mobile-device');
+    document.body.classList.add('mobile-device');
+}
+
+// Dynamic sidebar resizing
+function adjustSidebarWidth() {
+    const screenWidth = window.innerWidth;
+    const sidebar = document.querySelector('.sidebar');
+    const content = document.querySelector('.content');
+    
+    if (!sidebar || !content) return;
+    
+    // Don't adjust on mobile
+    if (isMobileDevice() || screenWidth <= 767) return;
+    
+    let sidebarWidth = 320; // default
+    
+    if (screenWidth >= 1920) {
+        sidebarWidth = 400;
+    } else if (screenWidth >= 1440) {
+        sidebarWidth = 320;
+    } else if (screenWidth >= 1200) {
+        sidebarWidth = 280;
+    } else if (screenWidth >= 768) {
+        sidebarWidth = 260;
+    }
+    
+    sidebar.style.width = sidebarWidth + 'px';
+    sidebar.style.minWidth = sidebarWidth + 'px';
+    sidebar.style.maxWidth = sidebarWidth + 'px';
+    
+    const contentWidth = screenWidth - sidebarWidth;
+    content.style.width = contentWidth + 'px';
+    content.style.minWidth = contentWidth + 'px';
+    content.style.maxWidth = contentWidth + 'px';
+}
+
+
+// Call on load and resize
+window.addEventListener('resize', adjustSidebarWidth);
 
     document.addEventListener('DOMContentLoaded', async function() {
         console.log('NomadNet Browser starting...');
