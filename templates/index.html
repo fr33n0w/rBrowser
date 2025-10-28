@@ -4104,30 +4104,6 @@ function detectContentType(content) {
     }
 }
 
-// Enhanced mobile detection
-function isMobileDevice() {
-    // Check multiple conditions
-    const touchDevice = ('ontouchstart' in window) || 
-                       (navigator.maxTouchPoints > 0) || 
-                       (navigator.msMaxTouchPoints > 0);
-    
-    const smallScreen = window.innerWidth <= 768;
-    
-    const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    const noHover = window.matchMedia('(hover: none)').matches;
-    
-    // Pocophone F1 and similar devices detection
-    const pointerCoarse = window.matchMedia('(pointer: coarse)').matches;
-    
-    return (touchDevice && smallScreen) || mobileUserAgent || (noHover && pointerCoarse);
-}
-
-// Apply mobile class if detected
-if (isMobileDevice()) {
-    document.documentElement.classList.add('mobile-device');
-    document.body.classList.add('mobile-device');
-}
 
 // Dynamic sidebar resizing
 function adjustSidebarWidth() {
@@ -4162,192 +4138,261 @@ function adjustSidebarWidth() {
     content.style.maxWidth = contentWidth + 'px';
 }
 
+// Enhanced mobile detection including Ubuntu Touch/Morph browser
+function isMobileDevice() {
+    // Check multiple conditions
+    const touchDevice = ('ontouchstart' in window) || 
+                       (navigator.maxTouchPoints > 0) || 
+                       (navigator.msMaxTouchPoints > 0);
+    
+    const smallScreen = window.innerWidth <= 768;
+    
+    // Enhanced user agent detection including Ubuntu Touch
+    const mobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Ubuntu.*Mobile|Mobile.*Ubuntu/i.test(navigator.userAgent);
+    
+    const noHover = window.matchMedia('(hover: none)').matches;
+    
+    // Pocophone F1 and similar devices detection
+    const pointerCoarse = window.matchMedia('(pointer: coarse)').matches;
+    
+    // Specific Ubuntu Touch/Morph browser detection
+    const isUbuntuTouch = /Ubuntu.*Touch|QtWebEngine/i.test(navigator.userAgent);
+    
+    // Check for Morph browser specifically
+    const isMorphBrowser = navigator.userAgent.includes('QtWebEngine') || 
+                          navigator.userAgent.includes('Ubuntu') ||
+                          (window.navigator.platform === 'Linux armv7l');
+    
+    return (touchDevice && smallScreen) || 
+           mobileUserAgent || 
+           (noHover && pointerCoarse) || 
+           isUbuntuTouch || 
+           isMorphBrowser;
+}
+
+// Create mobile nodes button function
+function createMobileNodesButton() {
+    console.log('Creating mobile nodes button...');
+    
+    // Remove any existing button first
+    const existingBtn = document.querySelector('.mobile-nodes-btn');
+    if (existingBtn) {
+        existingBtn.remove();
+    }
+    
+    const nodesBtn = document.createElement('button');
+    nodesBtn.className = 'mobile-nodes-btn';
+    nodesBtn.innerHTML = '📋 Nodes';
+    nodesBtn.style.display = 'block';
+    
+    const tabBar = document.querySelector('.tab-bar');
+    const newTabBtn = document.querySelector('.new-tab-btn');
+    
+    if (tabBar && newTabBtn) {
+        tabBar.insertBefore(nodesBtn, newTabBtn);
+        console.log('Mobile nodes button inserted');
+    } else {
+        console.error('Could not find tab-bar or new-tab-btn');
+    }
+    
+    const sidebar = document.querySelector('.sidebar');
+    
+    nodesBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sidebar.classList.toggle('mobile-show');
+        nodesBtn.innerHTML = sidebar.classList.contains('mobile-show') ? '✕ Close' : '📋 Nodes';
+        console.log('Nodes button clicked, sidebar visible:', sidebar.classList.contains('mobile-show'));
+    });
+    
+    // Close when clicking outside sidebar
+    document.addEventListener('click', (e) => {
+        if (sidebar.classList.contains('mobile-show') && 
+            !sidebar.contains(e.target) && 
+            !nodesBtn.contains(e.target)) {
+            sidebar.classList.remove('mobile-show');
+            nodesBtn.innerHTML = '📋 Nodes';
+        }
+    });
+    
+    // Close when node clicked
+    document.getElementById('node-list').addEventListener('click', (e) => {
+        if (e.target.closest('.node-item')) {
+            setTimeout(() => {
+                sidebar.classList.remove('mobile-show');
+                nodesBtn.innerHTML = '📋 Nodes';
+            }, 200);
+        }
+    });
+}
+
+// Apply mobile class if detected
+if (isMobileDevice()) {
+    document.documentElement.classList.add('mobile-device');
+    document.body.classList.add('mobile-device');
+}
 
 // Call on load and resize
 window.addEventListener('resize', adjustSidebarWidth);
 
-    document.addEventListener('DOMContentLoaded', async function() {
-        console.log('NomadNet Browser starting...');
-        await initializeMicronParser();
-        loadFavorites();
-        updateNodeListPosition();
-        document.getElementById('node-list').addEventListener('click', function(e) {
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('NomadNet Browser starting...');
+    console.log('User Agent:', navigator.userAgent);
+    console.log('Platform:', navigator.platform);
+    console.log('Touch support:', 'ontouchstart' in window);
+    console.log('Max touch points:', navigator.maxTouchPoints);
+    console.log('Screen width:', window.innerWidth);
+    console.log('Is mobile detected:', isMobileDevice());
+    
+    // FORCE mobile mode detection - aggressive approach
+    const forceMinimalMobile = window.innerWidth <= 768 || 
+                               ('ontouchstart' in window && window.innerWidth <= 1024);
+    
+    if (forceMinimalMobile || isMobileDevice()) {
+        document.documentElement.classList.add('mobile-device');
+        document.body.classList.add('mobile-device');
+        console.log('Mobile mode FORCED');
+        
+        // Create mobile nodes button immediately
+        setTimeout(() => {
+            createMobileNodesButton();
+        }, 100);
+    }
+    
+    await initializeMicronParser();
+    loadFavorites();
+    updateNodeListPosition();
+    document.getElementById('node-list').addEventListener('click', function(e) {
 
-
-            if (e.target.classList.contains('info-btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const hash = e.target.getAttribute('data-hash');
-                const name = e.target.getAttribute('data-name');
-                const lastSeen = e.target.getAttribute('data-last-seen');
-                const dataLength = e.target.getAttribute('data-data-length');
-                const announceCount = e.target.getAttribute('data-announce-count');
-                const relativeTime = e.target.getAttribute('data-relative-time');
-                
-                showNodeInfo(hash, name, lastSeen, dataLength, announceCount, relativeTime);
-                return;
-            }
+        if (e.target.classList.contains('info-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
             
-            if (e.target.classList.contains('star-btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const hash = e.target.getAttribute('data-hash');
-                const name = e.target.getAttribute('data-name');
-                toggleFavorite(hash, name);
-                return;
-            }
+            const hash = e.target.getAttribute('data-hash');
+            const name = e.target.getAttribute('data-name');
+            const lastSeen = e.target.getAttribute('data-last-seen');
+            const dataLength = e.target.getAttribute('data-data-length');
+            const announceCount = e.target.getAttribute('data-announce-count');
+            const relativeTime = e.target.getAttribute('data-relative-time');
+            
+            showNodeInfo(hash, name, lastSeen, dataLength, announceCount, relativeTime);
+            return;
+        }
+        
+        if (e.target.classList.contains('star-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const hash = e.target.getAttribute('data-hash');
+            const name = e.target.getAttribute('data-name');
+            toggleFavorite(hash, name);
+            return;
+        }
 
-            const nodeItem = e.target.closest('.node-item');
-            if (nodeItem && !e.target.closest('.star-btn') && !e.target.closest('.info-btn') && !e.target.closest('.copy-icon')) {
-                const hash = nodeItem.getAttribute('data-hash');
-                const name = nodeItem.getAttribute('data-name');
-                browseNode(hash, name);
-            }
+        const nodeItem = e.target.closest('.node-item');
+        if (nodeItem && !e.target.closest('.star-btn') && !e.target.closest('.info-btn') && !e.target.closest('.copy-icon')) {
+            const hash = nodeItem.getAttribute('data-hash');
+            const name = nodeItem.getAttribute('data-name');
+            browseNode(hash, name);
+        }
 
-            if (e.target.classList.contains('fingerprint-btn')) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const hash = e.target.getAttribute('data-hash');
-                const name = e.target.getAttribute('data-name');
-                sendFingerprintToNode(hash, name);
-                return;
-            }
+        if (e.target.classList.contains('fingerprint-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const hash = e.target.getAttribute('data-hash');
+            const name = e.target.getAttribute('data-name');
+            sendFingerprintToNode(hash, name);
+            return;
+        }
 
-        });
+    });
 
-        createNewTab();
+    createNewTab();
 
-        setInterval(() => {
-            updateNodes();
-            updateStatus();
-
-            if (statusFetchFailures >= maxStatusFailures) {
-                if (Math.random() < 0.2) {  
-                    console.log('Attempting connection recovery...');
-                    setTimeout(() => {
-                        statusFetchFailures = Math.max(0, statusFetchFailures - 1); 
-                        updateStatus();
-                    }, 1000); 
-                }
-            }
-        }, 2000);
-
+    setInterval(() => {
         updateNodes();
         updateStatus();
 
-        console.log('Browser initialization complete');
-
-    // Mobile nodes button in tab bar
-        if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
-            const nodesBtn = document.createElement('button');
-            nodesBtn.className = 'mobile-nodes-btn';
-            nodesBtn.innerHTML = '📋 Nodes';
-            
-            // Add before "New Tab" button
-            const tabBar = document.querySelector('.tab-bar');
-            const newTabBtn = document.querySelector('.new-tab-btn');
-            if (tabBar && newTabBtn) {
-                tabBar.insertBefore(nodesBtn, newTabBtn);
+        if (statusFetchFailures >= maxStatusFailures) {
+            if (Math.random() < 0.2) {  
+                console.log('Attempting connection recovery...');
+                setTimeout(() => {
+                    statusFetchFailures = Math.max(0, statusFetchFailures - 1); 
+                    updateStatus();
+                }, 1000); 
             }
+        }
+    }, 2000);
+
+    updateNodes();
+    updateStatus();
+
+    console.log('Browser initialization complete');
+
+    // Orientation alert for mobile devices - auto-hide after 5 seconds
+    if (window.matchMedia('(hover: none) and (pointer: coarse)').matches || isMobileDevice()) {
+        let alertTimeout = null;
+        
+        function checkOrientation() {
+            const isPortrait = window.innerHeight > window.innerWidth;
             
-            const sidebar = document.querySelector('.sidebar');
-            
-            nodesBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                sidebar.classList.toggle('mobile-show');
-                nodesBtn.innerHTML = sidebar.classList.contains('mobile-show') ? '✕ Close' : '📋 Nodes';
-            });
-            
-            // Close when clicking outside sidebar
-            document.addEventListener('click', (e) => {
-                if (sidebar.classList.contains('mobile-show') && 
-                    !sidebar.contains(e.target) && 
-                    !nodesBtn.contains(e.target)) {
-                    sidebar.classList.remove('mobile-show');
-                    nodesBtn.innerHTML = '📋 Nodes';
+            if (isPortrait) {
+                // Create alert if it doesn't exist
+                if (!document.getElementById('orientation-alert')) {
+                    const alert = document.createElement('div');
+                    alert.id = 'orientation-alert';
+                    alert.style.cssText = `
+                        position: fixed;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        background: #fb8500;
+                        color: white;
+                        padding: 12px;
+                        text-align: center;
+                        z-index: 3000;
+                        font-size: 14px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                        transition: opacity 0.3s ease;
+                    `;
+                    alert.innerHTML = '📱 For better experience, please rotate your device to landscape mode';
+                    document.body.appendChild(alert);
+                    
+                    // Auto-hide after 5 seconds
+                    alertTimeout = setTimeout(() => {
+                        alert.style.opacity = '0';
+                        setTimeout(() => {
+                            if (alert.parentNode) {
+                                alert.remove();
+                            }
+                        }, 300); // Wait for fade animation
+                    }, 5000);
                 }
-            });
-            
-            // Close when node clicked
-            document.getElementById('node-list').addEventListener('click', (e) => {
-                if (e.target.closest('.node-item')) {
-                    setTimeout(() => {
-                        sidebar.classList.remove('mobile-show');
-                        nodesBtn.innerHTML = '📋 Nodes';
-                    }, 200);
+            } else {
+                // Remove alert in landscape
+                if (alertTimeout) {
+                    clearTimeout(alertTimeout);
+                    alertTimeout = null;
                 }
-            });
+                const alert = document.getElementById('orientation-alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }
         }
         
-    // Orientation alert for mobile devices - auto-hide after 5 seconds
-        if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
-            let alertTimeout = null;
-            
-            function checkOrientation() {
-                const isPortrait = window.innerHeight > window.innerWidth;
-                
-                if (isPortrait) {
-                    // Create alert if it doesn't exist
-                    if (!document.getElementById('orientation-alert')) {
-                        const alert = document.createElement('div');
-                        alert.id = 'orientation-alert';
-                        alert.style.cssText = `
-                            position: fixed;
-                            bottom: 0;
-                            left: 0;
-                            right: 0;
-                            background: #fb8500;
-                            color: white;
-                            padding: 12px;
-                            text-align: center;
-                            z-index: 3000;
-                            font-size: 14px;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                            transition: opacity 0.3s ease;
-                        `;
-                        alert.innerHTML = '📱 For better experience, please rotate your device to landscape mode';
-                        document.body.appendChild(alert);
-                        
-                        // Auto-hide after 5 seconds
-                        alertTimeout = setTimeout(() => {
-                            alert.style.opacity = '0';
-                            setTimeout(() => {
-                                if (alert.parentNode) {
-                                    alert.remove();
-                                }
-                            }, 300); // Wait for fade animation
-                        }, 5000);
-                    }
-                } else {
-                    // Remove alert in landscape
-                    if (alertTimeout) {
-                        clearTimeout(alertTimeout);
-                        alertTimeout = null;
-                    }
-                    const alert = document.getElementById('orientation-alert');
-                    if (alert) {
-                        alert.remove();
-                    }
-                }
-            }
-            
-            // Check on load
-            checkOrientation();
-            
-            // Check on orientation change
-            window.addEventListener('orientationchange', () => {
-                setTimeout(checkOrientation, 100);
-            });
-            
-            // Check on resize
-            window.addEventListener('resize', checkOrientation);
-        }
-
-
-    });
+        // Check on load
+        checkOrientation();
+        
+        // Check on orientation change
+        window.addEventListener('orientationchange', () => {
+            setTimeout(checkOrientation, 100);
+        });
+        
+        // Check on resize
+        window.addEventListener('resize', checkOrientation);
+    }
+});
 
 // mobile devices support
 let touchStartX = 0;
