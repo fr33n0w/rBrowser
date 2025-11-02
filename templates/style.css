@@ -738,7 +738,6 @@ input:disabled + .slider {
     flex: 1; 
     overflow-y: auto; 
     overflow-x: hidden;
-    padding: 32px; 
     background: #0d1117; 
     position: relative;
     height: auto;
@@ -777,7 +776,7 @@ input:disabled + .slider {
     letter-spacing: 0px;
     color: #e6edf3;
     background: #0d1117;
-    padding: 25px;
+    padding: 5px;
     border-radius: 8px;
     border: 1px solid #21262d;
     min-height: 200px;
@@ -1293,7 +1292,7 @@ mark {
     
     .page-content {
         font-size: 16px;
-        padding: 40px;
+        padding: 5px;
     }
 }
 
@@ -1320,7 +1319,7 @@ mark {
     }
     
     .page-content {
-        padding: 20px;
+        padding: 5px;
         font-size: 14px;
     }
 }
@@ -1428,7 +1427,7 @@ mark {
 @media (max-width: 480px) {
     .page-content {
         font-size: 13px;
-        padding: 12px;
+        padding: 5px;
     }
     
     .tab {
@@ -1438,88 +1437,63 @@ mark {
     }
 }
 
-/* Mobile class-based detection + small screens */
-.mobile-device body,
-body.mobile-device,
-@media (max-width: 767px) {
-    body {
-        overflow: hidden;
-        margin: 0;
-        padding: 0;
-    }
+/* Mobile class-based detection for desktop browsers that support .mobile-device class */
+.mobile-device body {
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
 }
 
-.mobile-device .main,
-@media (max-width: 767px) {
-    .main {
-        display: block !important;
-        flex-direction: initial !important;
-        height: 100vh !important;
-        width: 100vw !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-    }
+.mobile-device .main {
+    display: block !important;
+    flex-direction: initial !important;
+    height: 100vh !important;
+    width: 100vw !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
 }
 
-.mobile-device .sidebar,
-@media (max-width: 767px) {
-    .sidebar {
-        position: fixed !important;
-        left: -320px !important;
-        top: 0 !important;
-        width: 280px !important;
-        min-width: 280px !important;
-        max-width: 280px !important;
-        height: 100vh !important;
-        z-index: 2000 !important;
-        transition: left 0.3s ease;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-    }
+.mobile-device .sidebar {
+    position: fixed !important;
+    left: -320px !important;
+    top: 0 !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+    height: 100vh !important;
+    z-index: 2000 !important;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.5);
 }
 
-.mobile-device .sidebar.mobile-show,
-@media (max-width: 767px) {
-    .sidebar.mobile-show {
-        left: 0 !important;
-    }
+.mobile-device .sidebar.mobile-show {
+    left: 0 !important;
 }
 
-.mobile-device .content,
-@media (max-width: 767px) {
-    .content {
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        width: 100vw !important;
-        min-width: 100vw !important;
-        max-width: 100vw !important;
-        height: 100vh !important;
-        z-index: 1 !important;
-    }
+.mobile-device .content {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    min-width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    z-index: 1 !important;
 }
 
-.mobile-device .nav-controls,
-@media (max-width: 767px) {
-    .nav-controls {
-        display: none !important;
-    }
+.mobile-device .nav-controls {
+    display: none !important;
 }
 
-.mobile-device .shortcuts-bar,
-@media (max-width: 767px) {
-    .shortcuts-bar {
-        display: none !important;
-    }
+.mobile-device .shortcuts-bar {
+    display: none !important;
 }
 
-.mobile-device .mobile-nodes-btn,
-@media (max-width: 767px) {
-    .mobile-nodes-btn {
-        display: block !important;
-    }
+.mobile-device .mobile-nodes-btn {
+    display: block !important;
 }
 
 /* Touch device optimization */
@@ -1723,14 +1697,13 @@ body.mobile-device,
     }
     
     .browser-area {
-        padding: 10px;
         flex: 1;
         overflow-y: auto;
         width: 100% !important;
     }
     
     .page-content {
-        padding: 12px;
+        padding: 5px;
         font-size: 14px;
         word-wrap: break-word;
         overflow-wrap: break-word;
@@ -1865,27 +1838,35 @@ body.mobile-device,
     }
 }
 
-/* Force mobile layout for Ubuntu Touch / Morph Browser */
-@media (max-width: 768px), 
-       (hover: none) and (pointer: coarse) {
-    
+@media (max-width: 767px) {
     body {
-        overflow: hidden !important;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
     }
     
     .main {
         display: block !important;
         flex-direction: initial !important;
+        height: 100vh !important;
+        width: 100vw !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
     }
     
     .sidebar {
         position: fixed !important;
         left: -320px !important;
+        top: 0 !important;
         width: 280px !important;
         min-width: 280px !important;
         max-width: 280px !important;
         height: 100vh !important;
         z-index: 2000 !important;
+        transition: left 0.3s ease;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
     .sidebar.mobile-show {
@@ -1896,13 +1877,18 @@ body.mobile-device,
         position: fixed !important;
         left: 0 !important;
         top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
         width: 100vw !important;
         min-width: 100vw !important;
         max-width: 100vw !important;
-    }
-    
-    .nav-controls {
-        display: none !important;
+        height: 100vh !important;
+        z-index: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        transform: none !important;
     }
     
     .shortcuts-bar {
@@ -1910,6 +1896,259 @@ body.mobile-device,
     }
     
     .mobile-nodes-btn {
-        display: block !important;
+        background: #238636;
+        border: 1px solid #2ea043;
+        color: white;
+        padding: 10px 12px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 12px;
+        flex-shrink: 0;
+        transition: all 0.12s ease;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+    
+    .mobile-nodes-btn:active {
+        background: #2ea043;
+    }
+    
+    .nav-controls {
+        display: none !important;
+    }
+    
+    .nav-bar {
+        padding: 4px !important;
+        height: auto !important;
+        min-height: 48px !important;
+        max-height: none !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 4px !important;
+        flex-shrink: 0;
+        width: 100% !important;
+        align-items: center;
+    }
+    
+    .address-bar {
+        flex: 1 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        min-height: 44px;
+        font-size: 16px;
+        margin: 0 !important;
+    }
+    
+    .go-btn, .star-btn, .fingerprint-btn,
+    .search-btn, .ping-btn, .info-btn-nav {
+        min-height: 44px !important;
+        max-height: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+        padding: 10px !important;
+        flex-shrink: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    .go-btn img, .search-btn img, .star-btn img,
+    .ping-btn img, .fingerprint-btn img, .info-btn-nav img {
+        width: 20px !important;
+        height: 20px !important;
+        object-fit: contain !important;
+    }
+    
+    .tab-bar {
+        padding: 4px;
+        flex-shrink: 0;
+        width: 100% !important;
+        min-height: 52px !important;
+        max-height: 52px !important;
+        display: flex;
+        gap: 4px;
+    }
+    
+    .tabs-container {
+        flex: 1;
+        overflow-x: auto;
+    }
+    
+    .tab {
+        min-width: 90px;
+        max-width: 120px;
+        padding: 10px 8px;
+        font-size: 12px;
+    }
+    
+    .tab-close {
+        padding: 4px 8px;
+        font-size: 16px;
+    }
+    
+    .new-tab-btn, .search-tab-btn {
+        display: none !important;
+    }
+    
+    .tab-content-wrapper {
+        flex: 1;
+        overflow: hidden;
+        width: 100% !important;
+        position: relative !important;
+    }
+    
+    .tab-content {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    .header {
+        padding: 6px !important;
+        height: auto !important;
+        min-height: 40px !important;
+        max-height: none !important;
+        flex-shrink: 0;
+        width: 100% !important;
+    }
+    
+    .page-info {
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .page-title {
+        font-size: 13px;
+    }
+    
+    .page-details {
+        font-size: 11px;
+    }
+    
+    .view-toggle {
+        position: relative;
+        top: auto;
+        right: auto;
+        transform: none;
+        margin-top: 4px;
+    }
+    
+    .browser-area {
+        flex: 1;
+        overflow-y: auto;
+        width: 100% !important;
+    }
+    
+    .page-content {
+        padding: 5px;
+        font-size: 14px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .node-item {
+        padding: 12px;
+        margin-bottom: 4px;
+    }
+    
+    .browse-btn, .info-btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 8px;
+    }
+    
+    .sidebar .node-item .star-btn,
+    .sidebar .node-item .info-btn {
+        display: none !important;
+    }
+    
+    html {
+        position: fixed !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    body {
+        position: fixed !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0;
+        padding: 0;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: none;
+    }
+    
+    .main {
+        overscroll-behavior: none !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .browser-area {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+    
+    .sidebar {
+        overscroll-behavior: contain !important;
+    }
+    
+    .node-list-container {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+    
+    /* Force proper viewport handling for mobile */
+    html {
+        position: fixed !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        height: 100% !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    body {
+        position: fixed !important;
+        overflow: hidden !important;
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Ensure main container fills screen */
+    .main {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        overflow: hidden !important;
+    }
+    
+    /* Fix content area */
+    .content {
+        position: fixed !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        left: 0 !important;
+        top: 0 !important;
+    }
+    
+    /* Sidebar mobile positioning */
+    .sidebar {
+        position: fixed !important;
+        left: -320px !important;
+        top: 0 !important;
+        height: 100vh !important;
+        width: 280px !important;
+        z-index: 2000 !important;
+        transition: left 0.3s ease;
+    }
+    
+    .sidebar.mobile-show {
+        left: 0 !important;
     }
 }
