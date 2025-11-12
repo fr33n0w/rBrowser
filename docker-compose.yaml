@@ -9,11 +9,11 @@ services:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/ || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/api/status | grep -q 'identity_hash' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 5s
+      start_period: 30s
     logging:
       driver: "json-file"
       options:
